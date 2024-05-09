@@ -5,7 +5,6 @@ import parser.Parser;
 public class Tiger {
     public static void main(String[] args) throws Exception {
         Parser parser;
-
         // ///////////////////////////////////////////////////////
         // process command line arguments
         CommandLine cmd = new CommandLine();
@@ -19,10 +18,13 @@ public class Tiger {
         // /////////////////////////////////////////////////////////
         // otherwise, we continue the normal compilation pipeline.
         // first, create a parser:
+        long startTime = System.currentTimeMillis();
         parser = new Parser(fileName);
         // then use it to parse the input file:
         parser.parse();
-
+        long endTime = System.currentTimeMillis();
+        long timeElapsed = endTime - startTime;
+        System.out.println("Parsing time in milliseconds: " + timeElapsed + " ms");
     }
 }
 
