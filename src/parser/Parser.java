@@ -15,7 +15,6 @@ public class Parser {
     BufferedInputStream inputStream;
     Lexer lexer;
     Token current;
-    Token next = null;
 
     public Parser(String fileName) {
         this.inputFileName = fileName;
@@ -24,13 +23,7 @@ public class Parser {
     // /////////////////////////////////////////////
     // utility methods to connect the lexer and the parser.
     private void advance() {
-        if (next == null) {
             current = lexer.nextToken();
-            next = lexer.nextToken();
-        } else {
-            current = next;
-            next = lexer.nextToken();
-        }
     }
 
     private void eatToken(Token.Kind kind) {
@@ -44,14 +37,13 @@ public class Parser {
     }
 
     private void error(String errMsg) {
-
-        System.out.println(STR."\{inputFileName}:\{current.rowNum}:\{current.colNum} Error: \{errMsg}\n");
+        System.out.println(STR."\{inputFileName}:\{current.rowNum}:\{current.colNum} Error: \{errMsg}");
         System.out.println(STR."\{lexer.getCurrentLine()}");
         for (int i = 1; i < current.colNum; i++) {
             System.out.print(" ");
         }
         System.out.println(STR."^");
-        exit(1);
+        advance();
     }
 
     private void error(String errMsg, boolean flag) {
@@ -241,7 +233,7 @@ public class Parser {
                 parseExp();
                 eatToken(Token.Kind.RPAREN);
                 parseStatement();
-                if(current.kind.equals(Token.Kind.ELSE)) {
+                if (current.kind.equals(Token.Kind.ELSE)) {
                     eatToken(Token.Kind.ELSE);
                     parseStatement();
                 }
@@ -286,7 +278,6 @@ public class Parser {
                     return;
                 }
         }
-        throw new Todo();
     }
 
     // Statements -> Statement Statements
@@ -352,7 +343,7 @@ public class Parser {
                 current.kind.equals(Token.Kind.BOOLEAN) ||
                 current.kind.equals(Token.Kind.ID)) {
             if (current.kind.equals(Token.Kind.ID)) {
-                if(!next.kind.equals(Token.Kind.ID)) {
+                if(!lexer.peekNextToken().kind.equals(Token.Kind.ID)) {
                     return;
                 }
             }
@@ -456,7 +447,6 @@ public class Parser {
         parseMainClass();
         parseClassDecls();
         eatToken(Token.Kind.EOF);
-        return;
     }
 
     private void initParser() {

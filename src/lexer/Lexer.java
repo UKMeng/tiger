@@ -233,11 +233,30 @@ public record Lexer(String fileName,
         }
     }
 
+    public Token peekNextToken() {
+        try {
+            if (lastToken == null) {
+                lastToken = this.nextToken0();
+            }
+            return lastToken;
+        } catch (Exception e) {
+            //e.printStackTrace();
+            System.exit(1);
+            return null;
+        }
+
+    }
+
     public Token nextToken() {
         Token t = null;
 
         try {
-            t = this.nextToken0();
+            if (lastToken != null) {
+                t = lastToken;
+                lastToken = null;
+            } else {
+                t = this.nextToken0();
+            }
         } catch (Exception e) {
             //e.printStackTrace();
             System.exit(1);

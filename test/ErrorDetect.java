@@ -5,15 +5,15 @@ class Sum {
 }
 
 class Doit {
-    public int doit(int n) {
+    public int doit(int ) {
         int sum;
-        int ;
-        
+        int i;
+
         i = 0;
         sum = 0;
-        while (i<n){
-        	sum = sum + i;
-        	i = i+1;
+        while (i < n) {
+            sum = sum + i;
+            i = i + 1;
         }
         return sum;
     }
