@@ -40,6 +40,13 @@ public class Compiler {
                 switch (op) {
                     case "+" -> emit("\taddq\t%rdx, %rax\n");
                     case "*" -> emit("\timulq\t%rdx\n");
+                    case "-" -> emit("\tsubq\t%rdx, %rax\n");
+                    case "/" -> {
+                        emit("\tmovq\t%rax, %rbx\n");
+                        emit("\tmovq\t%rdx, %rax\n");
+                        emit("\tcqo\n");
+                        emit("\tidivq\t%rbx\n");
+                    }
                     default -> throw new Todo(op);
                 }
             }
