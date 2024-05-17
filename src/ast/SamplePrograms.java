@@ -4,6 +4,7 @@ import ast.Ast.*;
 import ast.Ast.Exp.*;
 import ast.Ast.Stm.Assign;
 import ast.Ast.Stm.If;
+import ast.Ast.Stm.While;
 import ast.Ast.Stm.Print;
 import util.Id;
 import util.Tuple;
@@ -140,8 +141,73 @@ public class SamplePrograms {
 
     // Lab2, exercise 2: you should write some code to
     // encode the program "test/Sum.java".
+//    class Sum {
+//        public static void main(String[] a) {
+//            System.out.println(new Doit().doit(101));
+//        }
+//    }
+//
+//    class Doit {
+//        public int doit(int n) {
+//            int sum;
+//            int i;
+//
+//            i = 0;
+//            sum = 0;
+//            while (i < n)
+//                sum = sum + i;
+//            return sum;
+//        }
+//    }
+
+
     // Your code here:
-    public static Program.T progSum = null;
+    static MainClass.T sum = new MainClass.Singleton(
+            Id.newName("Sum"),
+            new AstId(Id.newName("a")),
+            new Print(new Call(new NewObject(Id.newName("Doit")),
+                    new AstId(Id.newName("doit")),
+                    List.of(new Num(101)),
+                    new Tuple.One<>(),
+                    new Tuple.One<>())));
+
+    static ast.Ast.Class.T doitSum = new ast.Ast.Class.Singleton(
+            Id.newName("Doit"),
+            null,
+            List.of(),
+            List.of(new Method.Singleton(
+                    // Type.T retType
+                    Type.getInt(),
+                    // AstId methodId
+                    new AstId(Id.newName("doit")),
+                    // List<Dec.T> formals
+                    List.of(new Dec.Singleton(Type.getInt(), new AstId(Id.newName("n")))),
+                    // List<Dec.T> locals
+                    List.of(new Dec.Singleton(Type.getInt(), new AstId(Id.newName("sum"))),
+                            new Dec.Singleton(Type.getInt(), new AstId(Id.newName("i")))),
+                    // List<Stm.T> stms
+                    List.of(
+                            // i = 0;
+                            new Assign(new AstId(Id.newName("i")), new Num(0)),
+                            // sum = 0;
+                            new Assign(new AstId(Id.newName("sum")), new Num(0)),
+                            // while (i < n)
+                            new While(
+                                    // Exp.T cond i < n
+                                    new Bop(new ExpId(new AstId(Id.newName("i"))),
+                                            "<",
+                                            new ExpId(new AstId(Id.newName("n")))),
+                                    // T body
+                                    new Assign(
+                                            new AstId(Id.newName("sum")),
+                                            new Bop(new ExpId(new AstId(Id.newName("sum"))),
+                                                    "+",
+                                                    new ExpId(new AstId(Id.newName("i"))))))),
+                    // Exp.T retExp
+                    new ExpId(new AstId(Id.newName("sum"))))),
+            new Tuple.One<>());
+
+    public static Program.T progSum = new Program.Singleton(sum, List.of(doitSum));
 
 
 }
