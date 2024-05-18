@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
+import static control.Control.Type.dump;
+
 public class ClassTable {
 
     private static void error(String msg) {
@@ -140,7 +142,16 @@ public class ClassTable {
 
     // lab 2, exercise 7:
     public void dump() {
-        throw new Todo();
+        if (dump) {
+            System.out.println("Class Table:");
+            System.out.println("--------------------------");
+            for (Id classId : this.classTable.keySet()) {
+                System.out.println(STR."Class: \{classId}");
+                System.out.println();
+                System.out.println(this.classTable.get(classId));
+                System.out.println("--------------------------");
+            }
+        }
     }
 
     @Override

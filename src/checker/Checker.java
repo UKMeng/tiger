@@ -104,7 +104,7 @@ public class Checker {
                 var resultRight = checkExp(right);
 
                 switch (bop) {
-                    case "+", "-" -> {
+                    case "+", "-", "*" -> {
                         if (Type.nonEquals(resultLeft, Type.getInt()) ||
                                 Type.nonEquals(resultRight, Type.getInt())) {
                             error(bop);
@@ -121,11 +121,63 @@ public class Checker {
                     default -> throw new Todo();
                 }
             }
+            case Exp.BopBool(
+                    Exp.T left,
+                    String bop,
+                    Exp.T right
+            ) -> {
+                var resultLeft = checkExp(left);
+                var resultRight = checkExp(right);
+                if (Type.nonEquals(resultLeft, Type.getBool()) ||
+                        Type.nonEquals(resultRight, Type.getBool())) {
+                    error("bopbool type mismatch");
+                }
+                return Type.getBool();
+            }
             case Exp.ExpId(AstId aid) -> {
                 return checkAstId(aid);
             }
             case Exp.This() -> {
                 return Type.getClassType(this.currentClass);
+            }
+            case Exp.True(), Exp.False() -> {
+                return Type.getBool();
+            }
+            case Exp.Length(Exp.T array) -> {
+                var resultArray = checkExp(array);
+                if (Type.nonEquals(resultArray, Type.getIntArray())) {
+                    error("Error: var should be IntArray");
+                }
+                return Type.getInt();
+            }
+            case Exp.NewIntArray(Exp.T exp) -> {
+                var resultExp = checkExp(exp);
+                if (Type.nonEquals(resultExp, Type.getInt())) {
+                    error("Error: var should be Int");
+                }
+                return Type.getIntArray();
+            }
+            case Exp.Uop(
+                    String uop,
+                    Exp.T exp
+            ) -> {
+                var resultExp = checkExp(exp);
+                if (Type.nonEquals(resultExp, Type.getBool())) {
+                    error("!");
+                }
+                return Type.getBool();
+            }
+            case Exp.ArraySelect(
+                    Exp.T array,
+                    Exp.T index
+            ) -> {
+                var resultArray = checkExp(array);
+                var resultIndex = checkExp(index);
+                if (Type.nonEquals(resultArray, Type.getIntArray()) ||
+                        Type.nonEquals(resultIndex, Type.getInt())) {
+                    error("ArraySelect type mismatch");
+                }
+                return Type.getInt();
             }
             default -> throw new Todo();
         }
@@ -163,6 +215,33 @@ public class Checker {
                     error("=");
                 }
             }
+            case Stm.While(
+                    Exp.T cond,
+                    Stm.T body
+            ) -> {
+                var resultCond = checkExp(cond);
+                if (Type.nonEquals(resultCond, Type.getBool())) {
+                    error("while requires a boolean type");
+                }
+                checkStm(body);
+            }
+            case Stm.Block(List<Stm.T> stms) -> {
+                stms.forEach(this::checkStm);
+            }
+            case Stm.AssignArray(
+                    AstId id,
+                    Exp.T index,
+                    Exp.T exp
+            ) -> {
+                var resultId = checkAstId(id);
+                var resultIndex = checkExp(index);
+                var resultExp = checkExp(exp);
+                if (Type.nonEquals(resultId, Type.getIntArray()) ||
+                        Type.nonEquals(resultIndex, Type.getInt()) ||
+                        Type.nonEquals(resultExp, Type.getInt())) {
+                    error("Assign Array type mismatch");
+                }
+            }
             default -> throw new Todo();
         }
     }
@@ -193,6 +272,7 @@ public class Checker {
         if (Type.nonEquals(resultExp, m.retType())) {
             error("ret type mismatch", m.retType(), resultExp);
         }
+        this.methodTable.dump();
     }
 
     // class
@@ -308,8 +388,6 @@ public class Checker {
                         p,
                         Control.Verbose.L1);
         p = buildTablePass.apply();
-
-
         // ////////////////////////////////////////////////
         // pass 2: check each class in turn, under the class table
         // built above.

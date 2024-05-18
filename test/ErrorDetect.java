@@ -6,8 +6,9 @@ class Sum {
 
 class Doit {
     public int doit(int n)  {
-        int sum
+        int sum;
         int i;
+        int unused_var;
 
         i = 0;
         sum = 0;

@@ -389,7 +389,7 @@ public class Parser {
                     eatToken(Token.Kind.RBRACKET);
                     isArray = true;
                 }
-                return isArray ? new Ast.Type.IntArray() : new Ast.Type.Int();
+                return isArray ? Ast.Type.getIntArray(): Ast.Type.getInt();
             case STRING:
                 advance();
                 if (current.kind.equals(Token.Kind.LBRACKET)) {
@@ -399,11 +399,11 @@ public class Parser {
                 return null; // Todo: Add String type
             case BOOLEAN:
                 advance();
-                return new Ast.Type.Boolean();
+                return Ast.Type.getBool();
             case ID:
                 String id = eatToken(Token.Kind.ID);
                 //advance();
-                return new Ast.Type.ClassType(Id.newName(id));
+                return Ast.Type.getClassType(Id.newName(id));
             case VOID:
                 advance();
                 return null; // Todo: Add Void Type
