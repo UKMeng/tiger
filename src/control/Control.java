@@ -45,6 +45,8 @@ public class Control {
     // the type checker
     public static class Type {
         public static boolean dump = false;
+        public static boolean classTableDump = false;
+        public static boolean methodTableDump = false;
     }
 }
 

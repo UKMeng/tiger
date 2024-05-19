@@ -45,7 +45,7 @@ public class CommandLine {
                             }
                         }),
                 new Arg("dump",
-                        "{ast|token|type}",
+                        "{ast|token|type|classtable|methodtable}",
                         "dump intermediate results",
                         Kind.String,
                         (Object x) -> {
@@ -53,6 +53,8 @@ public class CommandLine {
                                 case "ast" -> Control.Parser.dump = true;
                                 case "token" -> Control.Lexer.dumpToken = true;
                                 case "type" -> Control.Type.dump = true;
+                                case "classtable" -> Control.Type.classTableDump = true;
+                                case "methodtable" -> Control.Type.methodTableDump = true;
                                 default -> error(STR."unknown argument: \{x}");
                             }
                         }),

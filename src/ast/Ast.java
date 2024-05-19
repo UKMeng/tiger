@@ -57,7 +57,7 @@ public class Ast {
         }
 
         // singleton design pattern
-        private static final Type.T boolTy = new IntArray();
+        private static final Type.T boolTy = new Boolean();
         private static final Type.T intTy = new Int();
         private static final Type.T intArrayTy = new IntArray();
         private static final HashMap<Id, Type.T> classTyContainer = new HashMap<>();
@@ -92,7 +92,9 @@ public class Ast {
         public static void output(Type.T ty) {
             switch (ty) {
                 case Type.Boolean() -> System.out.println("boolean");
-                case Type.Int() -> System.out.print("int");
+                case Type.Int() -> System.out.println("int");
+                case Type.IntArray() -> System.out.println("int[]");
+                case Type.ClassType(Id id) -> System.out.println(id);
                 default -> throw new Todo();
             }
         }
