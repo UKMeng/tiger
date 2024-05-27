@@ -110,7 +110,36 @@ public class Translate {
     // build an inherit tree
     // TODO: lab3, exercise 5.
     private Tree<Ast.Class.T> buildInheritTree0(Ast.Program.T ast) {
-        throw new Todo();
+        switch(ast) {
+            case Ast.Program.Singleton(Ast.MainClass.T mainClass, List<Ast.Class.T> classes) -> {
+                Tree<Ast.Class.T> tree = new Tree<>("inheritTree");
+                // Root ?
+                tree.addRoot(mainClass);
+                for (Ast.Class.T c : classes) {
+                    tree.addNode(c);
+                }
+                for (Ast.Class.T c : classes) {
+                    if (c instanceof Ast.Class.Singleton s) {
+                        if (s.extends_ != null) {
+                            Ast.Class.T parent = null;
+                            for (Ast.Class.T c2 : classes) {
+                                if (c2 instanceof Ast.Class.Singleton s2) {
+                                    if (s2.classId.equals(s.extends_)) {
+                                        parent = c2;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (parent == null) {
+                                throw new util.Error("Parent class not found");
+                            }
+                            tree.addEdge(c, parent);
+                        }
+                    }
+                }
+                return tree;
+            }
+        }
     }
 
     private Tree<Ast.Class.T> buildInheritTree(Ast.Program.T ast) {
@@ -137,7 +166,7 @@ public class Translate {
             String serialFileName;
             try {
                 File dir = new File("");
-                serialFileName = dir.getCanonicalPath() + "/cfg/SumRec.java.cfg.ser";
+                serialFileName = dir.getCanonicalPath() + "/src/cfg/SumRec.java.cfg.ser";
 
                 FileInputStream fileIn = new FileInputStream(serialFileName);
                 ObjectInputStream in = new ObjectInputStream(fileIn);

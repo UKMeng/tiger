@@ -306,7 +306,6 @@ public class Checker {
             error("Return Type", m.retType(), resultExp);
         }
         this.methodTable.checkUnusedVar(m.methodId());
-        this.methodTable.dump();
     }
 
     // class

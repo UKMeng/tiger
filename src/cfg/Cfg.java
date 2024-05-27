@@ -6,6 +6,7 @@ import util.Label;
 import util.Todo;
 
 import java.io.Serializable;
+import java.sql.Statement;
 import java.util.List;
 
 public class Cfg {
@@ -272,6 +273,17 @@ public class Cfg {
                              Exp.T exp) implements T {
         }
 
+        public static void dot(Dot d, String from, Stm.T t) {
+            switch (t) {
+                case Stm.Assign(
+                        Id x,
+                        Exp.T exp
+                ) -> {
+                    d.insert(from, x.toString());
+                }
+            }
+        }
+
         static void pp(Stm.T t) {
             switch (t) {
                 case Assign(Id x, Exp.T exp) -> {
@@ -383,10 +395,12 @@ public class Cfg {
             switch (t) {
                 case Singleton(
                         Label label,
-                        List<Stm.T> _,
+                        List<Stm.T> stms,
                         List<Transfer.T> trans
-                ) -> trans.forEach((tr) -> Transfer.dot(d,
-                        label.toString(), tr));
+                ) -> {
+                    stms.forEach((stm) -> Stm.dot(d, label.toString(), stm));
+                    trans.forEach((tr) -> Transfer.dot(d, label.toString(), tr));
+                }
             }
         }
 
@@ -528,6 +542,8 @@ public class Cfg {
 
     // whole program
     public static class Program {
+        private static CfgSize cfgSize = new CfgSize();
+
         public sealed interface T extends Serializable
                 permits Singleton {
         }
@@ -568,6 +584,59 @@ public class Cfg {
                     structs.forEach(Struct::pp);
                     // functions:
                     functions.forEach(Function::pp);
+                }
+            }
+            cfgSize.size(prog);
+        }
+    }
+
+    // Exercise 2
+    public static class CfgSize {
+        private int numFunctions;
+        private int numBlocks;
+        private int numStms;
+
+        public CfgSize() {
+            this.numFunctions = 0;
+            this.numBlocks = 0;
+            this.numStms = 0;
+        }
+
+        public void size(Program.T p) {
+            System.out.println("<#methods, #blocks, #statements>");
+            System.out.println("---------------------------------");
+            switch (p) {
+                case Program.Singleton(_, _, _, _, List<Function.T> functions) -> {
+                    this.numFunctions = functions.size();
+                    for (Function.T function: functions) {
+                        sizeOfFunction(function);
+                    }
+                }
+            }
+            System.out.println("---------------------------------");
+            System.out.println("subtotal " + this.numBlocks + ", " + this.numStms);
+        }
+
+        private void sizeOfFunction(Function.T f) {
+            switch (f) {
+                case Function.Singleton(_, _, Id functionId, _, _, List<Block.T> blocks) -> {
+                    String functionName = functionId.toString();
+                    int blockNum = blocks.size();
+                    int statementNum = 0;
+                    for (Block.T block: blocks) {
+                        statementNum += sizeOfBlock(block);
+                    }
+                    System.out.println("<\"" + functionName + "\", " + blockNum + ", " + statementNum + ">");
+                }
+            }
+        }
+
+        private int sizeOfBlock(Block.T b) {
+            switch (b) {
+                case Block.Singleton(_, List<Stm.T> stms, _) -> {
+                    this.numBlocks++;
+                    this.numStms += stms.size();
+                    return stms.size();
                 }
             }
         }

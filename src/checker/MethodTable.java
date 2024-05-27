@@ -8,8 +8,6 @@ import util.Todo;
 import util.Tuple;
 
 import java.util.List;
-import static control.Control.Type.dump;
-import static control.Control.Type.methodTableDump;
 
 // map each argument and local in a method, to its corresponding type.
 // the method table is constructed for each method.
@@ -68,21 +66,19 @@ public class MethodTable {
 
     // lab 2, exercise 7:
     public void dump() {
-        if (dump || methodTableDump) {
-            System.out.println("method table:");
+        System.out.println("method table:");
+        System.out.println("--------------------------");
+        for (Id id : this.table.keySet()) {
+            Tuple.Two<Type.T, Id> type = this.table.get(id);
+            System.out.println(id + " : " + type);
             System.out.println("--------------------------");
-            for (Id id : this.table.keySet()) {
-                Tuple.Two<Type.T, Id> type = this.table.get(id);
-                System.out.println(id + " : " + type);
-                System.out.println("--------------------------");
-            }
+        }
 
-            System.out.println("unused variables:");
+        System.out.println("unused variables:");
+        System.out.println("--------------------------");
+        for (Id id : this.unusedVarSet) {
+            System.out.println(id);
             System.out.println("--------------------------");
-            for (Id id : this.unusedVarSet) {
-                System.out.println(id);
-                System.out.println("--------------------------");
-            }
         }
     }
 
