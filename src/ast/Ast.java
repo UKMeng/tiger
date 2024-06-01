@@ -292,6 +292,22 @@ public class Ast {
                 }
             }
         }
+
+        public static Id getExtends(Class.T cls) {
+            switch (cls) {
+                case Singleton(
+                        Id classId,
+                        Id extends_,
+                        List<Dec.T> decs,
+                        List<Method.T> methods,
+                        Tuple.One<T> parent
+                ) -> {
+                    return extends_;
+                }
+            }
+        }
+
+
     }
 
     // main class
@@ -302,7 +318,23 @@ public class Ast {
 
         public record Singleton(Id classId,
                                 AstId arg,
-                                Stm.T stm) implements T {
+                                Stm.T stm  ) implements T {
+        }
+
+        public static Id getClassId(T mainClass) {
+            switch (mainClass) {
+                case Singleton(Id classId, AstId arg, Stm.T stm) -> {
+                    return classId;
+                }
+            }
+        }
+
+        public static Stm.T getStm(T mainClass) {
+            switch (mainClass) {
+                case Singleton(Id classId, AstId arg, Stm.T stm) -> {
+                    return stm;
+                }
+            }
         }
     }
 

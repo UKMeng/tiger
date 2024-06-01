@@ -257,6 +257,15 @@ public class Cfg {
                 default -> throw new Todo(t);
             }
         }
+
+        public static Id GetId(Exp.T t) {
+            switch (t) {
+                case Eid(Id x, Type.T type) -> {
+                    return x;
+                }
+                default -> throw new Todo(t);
+            }
+        }
     }
     // end of expression
 
@@ -398,7 +407,7 @@ public class Cfg {
                         List<Stm.T> stms,
                         List<Transfer.T> trans
                 ) -> {
-                    stms.forEach((stm) -> Stm.dot(d, label.toString(), stm));
+                    //stms.forEach((stm) -> Stm.dot(d, label.toString(), stm));
                     trans.forEach((tr) -> Transfer.dot(d, label.toString(), tr));
                 }
             }

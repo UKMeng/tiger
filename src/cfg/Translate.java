@@ -7,6 +7,7 @@ import util.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Vector;
@@ -22,6 +23,9 @@ public class Translate {
     private Id currentThis = null;
     private Cfg.Function.T currentFunction = null;
     private Cfg.Block.T currentBlock = null;
+    private Cfg.Block.T currentThennBlock = null;
+    private Cfg.Block.T currentElseeBlock = null;
+    private Cfg.Block.T currentJumpBlock = null;
     private LinkedList<Cfg.Dec.T> newDecs = new LinkedList<>();
     // for main function
     private Id mainClassId = null;
@@ -60,6 +64,23 @@ public class Translate {
         }
     }
 
+    private Cfg.Vtable.Entry transVtables(Ast.Method.T method) {
+        switch (method) {
+            case Ast.Method.Singleton(
+                    Ast.Type.T retType,
+                    Ast.AstId methodId,
+                    List<Ast.Dec.T> formals,
+                    List<Ast.Dec.T> locals,
+                    List<Ast.Stm.T> stms,
+                    Ast.Exp.T retExp
+            ) -> {
+                List<Cfg.Dec.T> cfgDecls = transDecList(formals);
+                cfgDecls.addAll(transDecList(locals));
+                return new Cfg.Vtable.Entry(transType(retType), this.currentClassId, methodId.id, cfgDecls);
+            }
+        }
+    }
+
     private List<Cfg.Dec.T> transDecList(List<Ast.Dec.T> decs) {
         return decs.stream().map(this::transDec).collect(Collectors.toList());
     }
@@ -79,8 +100,82 @@ public class Translate {
     /////////////////////////////
     // translate an expression
     // TODO: lab3, exercise 8.
-    private Id transExp(Ast.Exp.T exp) {
-        throw new Todo();
+    private Cfg.Exp.T transExp(Ast.Exp.T exp) {
+        switch(exp) {
+            case Ast.Exp.Num(int i) -> {
+                Id id = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.Int(), id));
+                emit(new Cfg.Stm.Assign(id, new Cfg.Exp.Int(i)));
+                return new Cfg.Exp.Eid(id, new Cfg.Type.Int());
+            }
+            case Ast.Exp.Bop(Ast.Exp.T left, String op, Ast.Exp.T right) -> {
+                Cfg.Exp.T leftExp = transExp(left);
+                Cfg.Exp.T rightExp = transExp(right);
+                Id id = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.Int(), id));
+                emit(new Cfg.Stm.Assign(id, new Cfg.Exp.Bop(op, List.of(Cfg.Exp.GetId(leftExp), Cfg.Exp.GetId(rightExp)), new Cfg.Type.Int())));
+                return new Cfg.Exp.Eid(id, new Cfg.Type.Int());
+            }
+            case Ast.Exp.ExpId(Ast.AstId id) -> {
+                return new Cfg.Exp.Eid(id.freshId, new Cfg.Type.Int());
+            }
+            case Ast.Exp.Call(Ast.Exp.T objExp, Ast.AstId methodId, List<Ast.Exp.T> args, Tuple.One<Id> theObejectType, Tuple.One<Ast.Type.T> retType) -> {
+                Cfg.Exp.T objId = transExp(objExp);
+
+                Id codeptr = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.CodePtr(), codeptr));
+                emit(new Cfg.Stm.Assign(codeptr, new Cfg.Exp.GetMethod(Cfg.Exp.GetId(objId), theObejectType.get(), methodId.id)));
+
+                List<Id> argsId = new ArrayList<>();
+                argsId.add(Cfg.Exp.GetId(objId));
+                for (Ast.Exp.T arg : args) {
+                    Cfg.Exp.T argExp = transExp(arg);
+                    argsId.add(Cfg.Exp.GetId(argExp));
+                }
+
+                Id id = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(transType(retType.get()), id));
+                emit(new Cfg.Stm.Assign(id, new Cfg.Exp.Call(codeptr, argsId, transType(retType.get()))));
+                return new Cfg.Exp.Eid(id, transType(retType.get()));
+            }
+            case Ast.Exp.This() -> {
+                return new Cfg.Exp.Eid(this.currentThis, new Cfg.Type.ClassType(this.currentClassId));
+            }
+            case Ast.Exp.NewObject(Id id) -> {
+                Id objId = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.ClassType(id), objId));
+                emit(new Cfg.Stm.Assign(objId, new Cfg.Exp.New(id)));
+                return new Cfg.Exp.Eid(objId, new Cfg.Type.ClassType(id));
+            }
+            case Ast.Exp.Uop(String op, Ast.Exp.T exp_) -> {
+                Id expId = Cfg.Exp.GetId(transExp(exp_));
+                Id id = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.Int(), id));
+                emit(new Cfg.Stm.Assign(id, new Cfg.Exp.Bop(op, List.of(expId), new Cfg.Type.Int())));
+                return new Cfg.Exp.Eid(id, new Cfg.Type.Int());
+            }
+            case Ast.Exp.ArraySelect(Ast.Exp.T array, Ast.Exp.T index) -> {
+                throw new Todo();
+            }
+            case Ast.Exp.NewIntArray(Ast.Exp.T size) -> {
+                throw new Todo();
+            }
+            case Ast.Exp.BopBool(Ast.Exp.T left, String op, Ast.Exp.T right) -> {
+                throw new Todo();
+            }
+            case Ast.Exp.True() -> {
+                throw new Todo();
+            }
+            case Ast.Exp.False() -> {
+                throw new Todo();
+            }
+            case Ast.Exp.Length(Ast.Exp.T array) -> {
+                throw new Todo();
+            }
+            default -> {
+                throw new Todo();
+            }
+        }
     }
 
     /////////////////////////////
@@ -89,13 +184,124 @@ public class Translate {
     // but saved the result into "currentBlock"
     // TODO: lab3, exercise 8.
     private void transStm(Ast.Stm.T stm) {
-        throw new Todo();
+        switch(stm) {
+            case Ast.Stm.Assign(Ast.AstId id, Ast.Exp.T exp) -> {
+                Cfg.Exp.T expId = transExp(exp);
+                Cfg.Stm.T cfgStm = new Cfg.Stm.Assign(id.freshId, expId);
+                emit(cfgStm);
+            }
+            case Ast.Stm.AssignArray(Ast.AstId id, Ast.Exp.T index, Ast.Exp.T exp) -> {
+//                Cfg.Stm.T cfgStm = new Cfg.Stm.AssignArray(id.freshId, transExp(index), transExp(exp));
+//                emit(cfgStm);
+            }
+            case Ast.Stm.Block(List<Ast.Stm.T> stms_) -> {
+                for (Ast.Stm.T s : stms_) {
+                    transStm(s);
+                }
+                //emitTransfer(new Cfg.Transfer.Jmp(this.currentJumpBlock));
+            }
+            case Ast.Stm.If(Ast.Exp.T cond, Ast.Stm.T thenn, Ast.Stm.T elsee) -> {
+                Cfg.Exp.T condId = transExp(cond);
+                emitTransfer(new Cfg.Transfer.If(Cfg.Exp.GetId(condId), this.currentThennBlock, this.currentElseeBlock));
+            }
+            case Ast.Stm.Print(Ast.Exp.T exp) -> {
+                Cfg.Exp.T printObj = transExp(exp);
+                Id id = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.Int(), id));
+                emit(new Cfg.Stm.Assign(id, new Cfg.Exp.Print(Cfg.Exp.GetId(printObj))));
+            }
+            case Ast.Stm.While(Ast.Exp.T cond, Ast.Stm.T body) -> {
+                Cfg.Exp.T condId = transExp(cond);
+                emitTransfer(new Cfg.Transfer.If(Cfg.Exp.GetId(condId), this.currentThennBlock, this.currentElseeBlock));
+            }
+        }
     }
 
     // translate a method
     // TODO: lab3, exercise 8.
     private Cfg.Function.T transMethod(Ast.Method.T method) {
-        throw new Todo();
+        switch (method) {
+            case Ast.Method.Singleton(
+                    Ast.Type.T retType,
+                    Ast.AstId methodId,
+                    List<Ast.Dec.T> formals,
+                    List<Ast.Dec.T> locals,
+                    List<Ast.Stm.T> stms,
+                    Ast.Exp.T retExp
+            ) -> {
+                List<Cfg.Block.T> blocks = new ArrayList<>();
+                this.currentBlock = new Cfg.Block.Singleton(new Label(), new LinkedList<>(), new LinkedList<>());
+                this.newDecs = new LinkedList<>();
+                // TODO: Trans Stm
+                for (Ast.Stm.T stm : stms) {
+                    switch(stm) {
+                        case Ast.Stm.If(Ast.Exp.T cond, Ast.Stm.T thenn, Ast.Stm.T elsee) -> {
+                            Label thennLabel = new Label();
+                            Label elseeLabel = new Label();
+                            Label joinLabel = new Label();
+
+                            this.currentThennBlock = new Cfg.Block.Singleton(thennLabel, new LinkedList<>(), new LinkedList<>());
+                            this.currentElseeBlock = new Cfg.Block.Singleton(elseeLabel, new LinkedList<>(), new LinkedList<>());
+                            this.currentJumpBlock = new Cfg.Block.Singleton(joinLabel, new LinkedList<>(), new LinkedList<>());
+                            transStm(stm); // add cond and transfer to currentBlock
+                            blocks.add(this.currentBlock);
+                            this.currentBlock = this.currentThennBlock;
+                            transStm(thenn);
+                            emitTransfer(new Cfg.Transfer.Jmp(this.currentJumpBlock));
+                            blocks.add(this.currentBlock);
+                            this.currentBlock = this.currentElseeBlock;
+                            transStm(elsee);
+                            emitTransfer(new Cfg.Transfer.Jmp(this.currentJumpBlock));
+                            blocks.add(this.currentBlock);
+                            this.currentBlock = this.currentJumpBlock;
+                        }
+                        case Ast.Stm.While(Ast.Exp.T cond, Ast.Stm.T body) -> {
+                            Label condLabel = new Label();
+                            Label bodyLabel = new Label();
+                            Label jumpLabel = new Label();
+
+                            this.currentThennBlock = new Cfg.Block.Singleton(bodyLabel, new LinkedList<>(), new LinkedList<>());
+                            this.currentElseeBlock = new Cfg.Block.Singleton(jumpLabel, new LinkedList<>(), new LinkedList<>());
+
+                            Cfg.Block.Singleton condBlock = new Cfg.Block.Singleton(condLabel, new LinkedList<>(), new LinkedList<>());
+                            emitTransfer(new Cfg.Transfer.Jmp(condBlock));
+                            blocks.add(this.currentBlock);
+                            this.currentBlock = condBlock;
+                            transStm(stm); // if(cond, body, jump);
+
+                            blocks.add(this.currentBlock);
+
+                            this.currentBlock = this.currentThennBlock;
+                            transStm(body);
+                            emitTransfer(new Cfg.Transfer.Jmp(condBlock));
+                            blocks.add(this.currentBlock);
+
+                            this.currentBlock = this.currentElseeBlock;
+                        }
+                        default -> {
+                            transStm(stm);
+                        }
+                    }
+                }
+
+                Cfg.Exp.T retExpId = transExp(retExp);
+                emitTransfer(new Cfg.Transfer.Ret(Cfg.Exp.GetId(retExpId)));
+                blocks.add(this.currentBlock);
+
+                List<Cfg.Dec.T> formalsDecls = new ArrayList<>();
+                this.currentThis = Id.newName("this");
+                formalsDecls.add(new Cfg.Dec.Singleton(new Cfg.Type.ClassType(this.currentClassId), this.currentThis));
+                formalsDecls.addAll(transDecList(formals));
+
+                List<Cfg.Dec.T> localDecls = transDecList(locals);
+                localDecls.addAll(this.newDecs);
+
+                this.currentFunction = new Cfg.Function.Singleton(transType(retType),
+                        this.currentClassId, methodId.id, formalsDecls,
+                        localDecls, blocks);
+            }
+        }
+        return this.currentFunction;
     }
 
     // the prefixing algorithm
@@ -104,7 +310,48 @@ public class Translate {
             Vector<Cfg.Vtable.Entry>> prefixOneClass(Ast.Class.T cls,
                                                      Tuple.Two<Vector<Cfg.Dec.T>,
                                                              Vector<Cfg.Vtable.Entry>> decsAndFunctions) {
-        throw new Todo();
+
+        Vector<Cfg.Dec.T> decs = decsAndFunctions.first();
+        Vector<Cfg.Dec.T> newDecs = new Vector<>();
+
+        Vector<Cfg.Vtable.Entry> vtableEntries = new Vector<>();
+
+        Vector<Cfg.Vtable.Entry> extendsFunctions = decsAndFunctions.second();
+
+        switch (cls) {
+            case Ast.Class.Singleton(Id classId, Id extends_, List<Ast.Dec.T> decs_, List<Ast.Method.T> methods, Tuple.One<Ast.Class.T> parent) -> {
+                // Translate fields
+                this.currentClassId = classId;
+
+                for (Ast.Dec.T dec : decs_) {
+                    Cfg.Dec.T cfgDec = transDec(dec);
+                    newDecs.add(cfgDec);
+                }
+
+                // Translate methods
+                for (Ast.Method.T method: methods) {
+                    Cfg.Vtable.Entry entry = transVtables(method);
+                    this.functions.add(transMethod(method));
+                    vtableEntries.add(entry);
+                }
+
+                if (extends_ != null) {
+                    for (Cfg.Vtable.Entry entry : extendsFunctions) {
+                        if (entry.classId() == extends_) {
+                            vtableEntries.add(entry);
+                        }
+                    }
+                }
+
+                //Vector<Cfg.Vtable.Entry> vtableEntriesCopy = new Vector<>(vtableEntries);
+                this.vtables.add(new Cfg.Vtable.Singleton(this.currentClassId, vtableEntries));
+                this.structs.add(new Cfg.Struct.Singleton(this.currentClassId, newDecs));
+                decs.addAll(newDecs);
+            }
+        }
+
+
+        return new Tuple.Two<>(decs, vtableEntries);
     }
 
     // build an inherit tree
@@ -113,28 +360,41 @@ public class Translate {
         switch(ast) {
             case Ast.Program.Singleton(Ast.MainClass.T mainClass, List<Ast.Class.T> classes) -> {
                 Tree<Ast.Class.T> tree = new Tree<>("inheritTree");
-                // Root ?
-                tree.addRoot(mainClass);
+
+                Vector<Ast.Stm.T> mainStm = new Vector<>();
+                mainStm.add(Ast.MainClass.getStm(mainClass));
+
+                this.mainClassId = Ast.MainClass.getClassId(mainClass);
+                this.mainFunctionId = Id.newName("main");
+                Ast.Method.Singleton mainMethod = new Ast.Method.Singleton(
+                        Ast.Type.getInt(),
+                        new Ast.AstId(Id.newName("main")),
+                        new Vector<>(),
+                        new Vector<>(),
+                        mainStm,
+                        new Ast.Exp.Num(0)
+                );
+                // TODO: Root Object?
+                Vector<Ast.Method.T> mainMethods = new Vector<>();
+                mainMethods.add(mainMethod);
+
+                tree.addRoot(new Ast.Class.Singleton(Ast.MainClass.getClassId(mainClass), null, new Vector<>(), mainMethods, null));
                 for (Ast.Class.T c : classes) {
                     tree.addNode(c);
-                }
-                for (Ast.Class.T c : classes) {
-                    if (c instanceof Ast.Class.Singleton s) {
-                        if (s.extends_ != null) {
-                            Ast.Class.T parent = null;
-                            for (Ast.Class.T c2 : classes) {
-                                if (c2 instanceof Ast.Class.Singleton s2) {
-                                    if (s2.classId.equals(s.extends_)) {
-                                        parent = c2;
-                                        break;
-                                    }
-                                }
+                    if (Ast.Class.getExtends(c) != null) {
+                        Ast.Class.T parent = null;
+                        for (Ast.Class.T c2 : classes) {
+                            if (Ast.Class.getClassId(c2).equals(Ast.Class.getExtends(c))) {
+                                parent = c2;
+                                break;
                             }
-                            if (parent == null) {
-                                throw new util.Error("Parent class not found");
-                            }
-                            tree.addEdge(c, parent);
                         }
+                        if (parent == null) {
+                            throw new util.Error("Parent class not found");
+                        }
+                        tree.addEdge(parent, c);
+                    } else {
+                        tree.addEdge(tree.root, tree.lookupNode(c));
                     }
                 }
                 return tree;
@@ -151,8 +411,9 @@ public class Translate {
                         (tree) -> {
                             // TODO: lab3, exercise 5.
                             // visualize the tree
-                            if (Control.Dot.beingDotted("inheritTree"))
-                                throw new Todo();
+                            if (Control.Dot.beingDotted("inheritTree")) {
+                                tree.dot(c -> Ast.Class.getClassId((Ast.Class.T) c).toString());
+                            }
                         });
         return trace.doit();
     }
