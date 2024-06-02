@@ -155,22 +155,46 @@ public class Translate {
                 return new Cfg.Exp.Eid(id, new Cfg.Type.Int());
             }
             case Ast.Exp.ArraySelect(Ast.Exp.T array, Ast.Exp.T index) -> {
-                throw new Todo();
+                Id arrayId = Cfg.Exp.GetId(transExp(array));
+                Id indexId = Cfg.Exp.GetId(transExp(index));
+                Id id = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.Int(), id));
+                emit(new Cfg.Stm.Assign(id, new Cfg.Exp.IntArraySelect(arrayId, indexId)));
+                return new Cfg.Exp.Eid(id, new Cfg.Type.Int());
             }
             case Ast.Exp.NewIntArray(Ast.Exp.T size) -> {
-                throw new Todo();
+                Id sizeId = Cfg.Exp.GetId(transExp(size));
+                Id id = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.IntArray(), id));
+                emit(new Cfg.Stm.Assign(id, new Cfg.Exp.NewIntArray(sizeId)));
+                return new Cfg.Exp.Eid(id, new Cfg.Type.IntArray());
             }
             case Ast.Exp.BopBool(Ast.Exp.T left, String op, Ast.Exp.T right) -> {
-                throw new Todo();
+                Cfg.Exp.T leftExp = transExp(left);
+                Cfg.Exp.T rightExp = transExp(right);
+                Id id = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.Int(), id));
+                emit(new Cfg.Stm.Assign(id, new Cfg.Exp.Bop(op, List.of(Cfg.Exp.GetId(leftExp), Cfg.Exp.GetId(rightExp)), new Cfg.Type.Int())));
+                return new Cfg.Exp.Eid(id, new Cfg.Type.Int());
             }
             case Ast.Exp.True() -> {
-                throw new Todo();
+                Id id = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.Int(), id));
+                emit(new Cfg.Stm.Assign(id, new Cfg.Exp.Int(1)));
+                return new Cfg.Exp.Eid(id, new Cfg.Type.Int());
             }
             case Ast.Exp.False() -> {
-                throw new Todo();
+                Id id = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.Int(), id));
+                emit(new Cfg.Stm.Assign(id, new Cfg.Exp.Int(0)));
+                return new Cfg.Exp.Eid(id, new Cfg.Type.Int());
             }
             case Ast.Exp.Length(Ast.Exp.T array) -> {
-                throw new Todo();
+                Cfg.Exp.T arrayId = transExp(array);
+                Id id = Id.newNoname();
+                emitDec(new Cfg.Dec.Singleton(new Cfg.Type.Int(), id));
+                emit(new Cfg.Stm.Assign(id, new Cfg.Exp.Length(Cfg.Exp.GetId(arrayId))));
+                return new Cfg.Exp.Eid(id, new Cfg.Type.Int());
             }
             default -> {
                 throw new Todo();
@@ -191,8 +215,9 @@ public class Translate {
                 emit(cfgStm);
             }
             case Ast.Stm.AssignArray(Ast.AstId id, Ast.Exp.T index, Ast.Exp.T exp) -> {
-//                Cfg.Stm.T cfgStm = new Cfg.Stm.AssignArray(id.freshId, transExp(index), transExp(exp));
-//                emit(cfgStm);
+                Cfg.Exp.T indexId = transExp(index);
+                Cfg.Exp.T exp_ = transExp(exp);
+                emit(new Cfg.Stm.AssignArray(id.freshId, indexId, exp_));
             }
             case Ast.Stm.Block(List<Ast.Stm.T> stms_) -> {
                 for (Ast.Stm.T s : stms_) {

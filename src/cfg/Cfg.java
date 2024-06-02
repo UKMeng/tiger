@@ -197,7 +197,7 @@ public class Cfg {
     // expression
     public static class Exp {
         public sealed interface T extends Serializable
-                permits Bop, Call, Eid, GetMethod, Int, New, Print {
+                permits Bop, Call, Eid, GetMethod, Int, New, Print, Length, IntArraySelect, NewIntArray {
         }
 
         public record Bop(String op,
@@ -230,6 +230,16 @@ public class Cfg {
         public record Print(Id x) implements T {
         }
 
+        public record Length(Id x) implements T {
+        }
+
+        public record IntArraySelect(Id array,
+                                     Id index) implements T {
+        }
+
+        public record NewIntArray(Id size) implements T {
+        }
+
         public static void pp(Exp.T t) {
             switch (t) {
                 case Bop(String op, List<Id> operands, Type.T type) -> {
@@ -254,6 +264,9 @@ public class Cfg {
                 case Int(int n) -> say(STR."\{n}");
                 case New(Id classId) -> say(STR."new \{classId.toString()}()");
                 case Print(Id x) -> say(STR."print(\{x.toString()})");
+                case Length(Id x) -> say(STR."length(\{x.toString()})");
+                case IntArraySelect(Id array, Id index) -> say(STR."\{array.toString()}[\{index.toString()}]");
+                case NewIntArray(Id size) -> say(STR."new int[\{size.toString()}]");
                 default -> throw new Todo(t);
             }
         }
@@ -273,7 +286,7 @@ public class Cfg {
     // statement
     public static class Stm {
         public sealed interface T extends Serializable
-                permits Assign {
+                permits Assign, AssignArray {
         }
 
         // assign
@@ -282,22 +295,31 @@ public class Cfg {
                              Exp.T exp) implements T {
         }
 
-        public static void dot(Dot d, String from, Stm.T t) {
-            switch (t) {
-                case Stm.Assign(
-                        Id x,
-                        Exp.T exp
-                ) -> {
-                    d.insert(from, x.toString());
-                }
-            }
+        public record AssignArray(Id x, Exp.T index, Exp.T exp) implements T {
         }
+
+//        public static void dot(Dot d, String from, Stm.T t) {
+//            switch (t) {
+//                case Stm.Assign(
+//                        Id x,
+//                        Exp.T exp
+//                ) -> {
+//                    d.insert(from, x.toString());
+//                }
+//            }
+//        }
 
         static void pp(Stm.T t) {
             switch (t) {
                 case Assign(Id x, Exp.T exp) -> {
                     printSpaces();
                     say(STR."\{x.toString()} = ");
+                    Exp.pp(exp);
+                    sayln(";");
+                }
+                case AssignArray(Id x, Exp.T index, Exp.T exp) -> {
+                    printSpaces();
+                    say(STR."\{x.toString()}[\{Cfg.Exp.GetId(index).toString()}] = ");
                     Exp.pp(exp);
                     sayln(";");
                 }
