@@ -490,6 +490,9 @@ public class Translate {
                         ast,
                         new ast.PrettyPrinter()::ppProgram,
                         (x) -> {
+                            x = new DeadCode().doitProgram(x); // DeadCode elimination
+
+
                             Cfg.Program.pp(x);
                             if (Control.Dot.beingDotted("cfg")) {
                                 Cfg.Program.dot(x);

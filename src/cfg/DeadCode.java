@@ -5,6 +5,7 @@ import util.Label;
 import util.Todo;
 import util.Tuple;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -42,16 +43,17 @@ public class DeadCode {
     // /////////////////////////////////////////////////////////
     // function
     private Cfg.Function.T doitFunction(Cfg.Function.T func) {
-        switch (func) {
-            case Cfg.Function.Singleton(
-                    Cfg.Type.T retType,
-                    Id classId,
-                    Id functionId,
-                    List<Cfg.Dec.T> formals,
-                    List<Cfg.Dec.T> locals,
-                    List<Cfg.Block.T> blocks
-            ) -> throw new Todo();
-        }
+//        switch (func) {
+//            case Cfg.Function.Singleton(
+//                    Cfg.Type.T retType,
+//                    Id classId,
+//                    Id functionId,
+//                    List<Cfg.Dec.T> formals,
+//                    List<Cfg.Dec.T> locals,
+//                    List<Cfg.Block.T> blocks
+//            ) -> throw new Todo();
+//        }
+        return func;
     }
 
     // TODO: lab3, exercise 10.
@@ -70,6 +72,24 @@ public class DeadCode {
                         functions.stream().map(this::doitFunction).toList();
                 // TODO: your code here:
                 //
+                List<Id> uninitalizedVars = new ArrayList<>();
+
+                for (Cfg.Function.T function : newFunctions) {
+                    Set<Id> inSet = inOutMap.get(function).first();
+                    Set<Id> outSet = inOutMap.get(function).second();
+
+                    for (Id var: outSet.getSet()) {
+                        if (!inSet.getSet().contains(var)) {
+                            uninitalizedVars.add(var);
+                        }
+                    }
+                }
+
+                if (uninitalizedVars.size() > 0) {
+                    System.out.println("Error: Uninitialized variables: " + uninitalizedVars);
+                }
+
+
                 return prog;
             }
         }

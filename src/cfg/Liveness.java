@@ -23,18 +23,88 @@ public class Liveness {
         liveInOutMap = new HashMap<>();
     }
 
+    private Set<Id> getUse(Cfg.Exp.T exp) {
+        Set<Id> use = new Set<>();
+        switch (exp) {
+            case Cfg.Exp.Bop(String op, List<Id> operands, Cfg.Type.T type) -> {
+                for (Id id : operands) {
+                    use.add(id);
+                }
+            }
+            case Cfg.Exp.Call(Id func, List<Id> operands, Cfg.Type.T type) -> {
+                for (Id id : operands) {
+                    use.add(id);
+                }
+            }
+            case Cfg.Exp.Eid(Id id, Cfg.Type.T type) -> {
+                use.add(id);
+            }
+            case Cfg.Exp.GetMethod(Id objId, Id classId, Id methodId) -> {
+                use.add(objId);
+            }
+            case Cfg.Exp.Print(Id id) -> {
+                use.add(id);
+            }
+            case Cfg.Exp.Length(Id id) -> {
+                use.add(id);
+            }
+            case Cfg.Exp.IntArraySelect(Id id, Id index) -> {
+                use.add(id);
+                use.add(index);
+            }
+            default -> {
+                // do nothing
+            }
+        }
+        return use;
+    }
 
     // /////////////////////////////////////////////////////////
     // statement
     private void doitStm(Cfg.Stm.T t) {
-        throw new Todo();
+        switch (t) {
+            case Cfg.Stm.Assign(
+                    Id id,
+                    Cfg.Exp.T exp
+            ) -> {
+                Set<Id> use = getUse(exp);
+                Set<Id> def = new Set<>();
+                def.add(id);
+                useDefMap.put(t, new Tuple.Two<>(use, def));
+            }
+            case Cfg.Stm.AssignArray(
+                    Id id,
+                    Cfg.Exp.T index,
+                    Cfg.Exp.T exp
+            ) -> {
+                Set<Id> use = getUse(exp);
+                use.union(getUse(index));
+                Set<Id> def = new Set<>();
+                def.add(id);
+                useDefMap.put(t, new Tuple.Two<>(use, def));
+            }
+        }
     }
     // end of statement
 
     // /////////////////////////////////////////////////////////
     // transfer
     private void doitTransfer(Cfg.Transfer.T t) {
-        throw new Todo();
+        switch (t) {
+            case Cfg.Transfer.If(Id x, Cfg.Block.T b1, Cfg.Block.T b2) -> {
+                Set<Id> use = new Set<>();
+                use.add(x);
+                useDefMap.put(t, new Tuple.Two<>(use, new Set<>()));
+            }
+            case Cfg.Transfer.Jmp(Cfg.Block.T target) -> {
+                useDefMap.put(t, new Tuple.Two<>(new Set<>(), new Set<>()));
+            }
+            case Cfg.Transfer.Ret(Id x) -> {
+                Set<Id> use = new Set<>();
+                use.add(x);
+                useDefMap.put(t, new Tuple.Two<>(use, new Set<>()));
+            }
+        }
     }
 
     // /////////////////////////////////////////////////////////
@@ -45,7 +115,24 @@ public class Liveness {
                     Label label,
                     List<Cfg.Stm.T> stms,
                     List<Cfg.Transfer.T> transfer
-            ) -> throw new Todo();
+            ) -> {
+                stms.forEach(this::doitStm);
+                transfer.forEach(this::doitTransfer);
+                Set<Id> in = new Set<>();
+                Set<Id> out = new Set<>();
+                for (Cfg.Transfer.T trans : transfer) {
+                    Tuple.Two<Set<Id>, Set<Id>> io = liveInOutMap.get(trans);
+                    if (io != null) {
+                        in.union(io.first());
+                        out.union(io.second());
+                    }
+                }
+                Tuple.Two<Set<Id>, Set<Id>> oldInOut = liveInOutMap.get(b);
+                if (oldInOut == null || !oldInOut.first().isSame(in) || !oldInOut.second().isSame(out)) {
+                    stillChanging = true;
+                    liveInOutMap.put(b, new Tuple.Two<>(in, out));
+                }
+            }
         }
     }
 
@@ -63,7 +150,22 @@ public class Liveness {
                     List<Cfg.Dec.T> formals,
                     List<Cfg.Dec.T> locals,
                     List<Cfg.Block.T> blocks
-            ) -> throw new Todo();
+            ) -> {
+                while (stillChanging) {
+                    stillChanging = false;
+                    blocks.forEach(this::doitBlock);
+                }
+                Set<Id> in = new Set<>();
+                Set<Id> out = new Set<>();
+                for (Cfg.Block.T block : blocks) {
+                    Tuple.Two<Set<Id>, Set<Id>> io = liveInOutMap.get(block);
+                    if (io != null) {
+                        in.union(io.first());
+                        out.union(io.second());
+                    }
+                }
+                liveInOutMap.put(func, new Tuple.Two<>(in, out));
+            }
         }
     }
 
