@@ -11,7 +11,7 @@ import java.util.List;
 
 public class DeadCode {
 
-    private HashMap<Object, Tuple.Two<Set<Id>, Set<Id>>> inOutMap;
+    private HashMap<Label, Tuple.Two<Set<Id>, Set<Id>>> inOutMap;
 
     public DeadCode() {
     }
@@ -114,7 +114,7 @@ public class DeadCode {
                     List<Cfg.Stm.T> stms,
                     List<Cfg.Transfer.T> transfer
             ) -> {
-                Tuple.Two<Set<Id>, Set<Id>> inOut = this.inOutMap.get(b);
+                Tuple.Two<Set<Id>, Set<Id>> inOut = this.inOutMap.get(Cfg.Block.getLabel(b));
                 Set<Id> liveSet = inOut.second();
 
                 for (int i = transfer.size() - 1; i >= 0; i--) {
@@ -152,7 +152,7 @@ public class DeadCode {
                 // an algorithm to detect uninitialized variables, by leveraging the results of liveness analysis.
                 if (blocks.size() != 0) {
                     Cfg.Block.T block = blocks.get(0);
-                    Tuple.Two<Set<Id>, Set<Id>> inOut = this.inOutMap.get(block);
+                    Tuple.Two<Set<Id>, Set<Id>> inOut = this.inOutMap.get(Cfg.Block.getLabel(block));
                     if(inOut != null && inOut.first() != null) {
                         Set<Id> firstIn = inOut.first();
                         if(firstIn.getSet().size() != 0) {

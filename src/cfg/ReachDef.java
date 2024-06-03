@@ -27,6 +27,9 @@ public class ReachDef {
     // /////////////////////////////////////////////////////////
     // statement
     private void doitStm(Cfg.Stm.T t) {
+        if (genKillMap.containsKey(t)) {
+            return;
+        }
         Set<Cfg.Stm.T> gen = new Set<>();
         Set<Cfg.Stm.T> kill = new Set<>();
         switch(t) {
@@ -89,9 +92,11 @@ public class ReachDef {
                     }
                 }
 
-                in.sub(kill);
+                //in.sub(kill);
+
                 gen.union(in);
-                out = gen.clone(); // out = gen U (in - kill)
+                gen.sub(kill);
+                out = gen.clone();
 
                 for (Cfg.Transfer.T t : transfer) {
                     switch(t) {

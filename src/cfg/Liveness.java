@@ -15,7 +15,7 @@ public class Liveness {
             useDefMap;
 
     // for "block", "transfer", and "statement".
-    private final HashMap<Object, Tuple.Two<Set<Id>, Set<Id>>>
+    private final HashMap<Label, Tuple.Two<Set<Id>, Set<Id>>>
             liveInOutMap;
 
     private Set<Id> formalsId;
@@ -121,7 +121,7 @@ public class Liveness {
                     List<Cfg.Stm.T> stms,
                     List<Cfg.Transfer.T> transfer
             ) -> {
-                Tuple.Two<Set<Id>, Set<Id>> oldInOut = liveInOutMap.get(b);
+                Tuple.Two<Set<Id>, Set<Id>> oldInOut = liveInOutMap.get(Cfg.Block.getLabel(b));
                 Set<Id> oldOut = oldInOut == null ? new Set<>() : oldInOut.second().clone();
 
                 stms.forEach(this::doitStm);
@@ -164,13 +164,13 @@ public class Liveness {
                 for (Cfg.Transfer.T trans : transfer) {
                     switch (trans) {
                         case Cfg.Transfer.If(Id x, Cfg.Block.T b1, Cfg.Block.T b2) -> {
-                            Tuple.Two<Set<Id>, Set<Id>> ioB1 = liveInOutMap.get(b1);
-                            Tuple.Two<Set<Id>, Set<Id>> ioB2 = liveInOutMap.get(b2);
+                            Tuple.Two<Set<Id>, Set<Id>> ioB1 = liveInOutMap.get(Cfg.Block.getLabel(b1));
+                            Tuple.Two<Set<Id>, Set<Id>> ioB2 = liveInOutMap.get(Cfg.Block.getLabel(b2));
                             if (ioB1 != null) out.union(ioB1.first());
                             if (ioB2 != null) out.union(ioB2.first());
                         }
                         case Cfg.Transfer.Jmp(Cfg.Block.T target) -> {
-                            Tuple.Two<Set<Id>, Set<Id>> io = liveInOutMap.get(target);
+                            Tuple.Two<Set<Id>, Set<Id>> io = liveInOutMap.get(Cfg.Block.getLabel(target));
                             if (io != null) out.union(io.first());
                         }
                         case Cfg.Transfer.Ret(Id x) -> {
@@ -183,7 +183,7 @@ public class Liveness {
 
                 if (oldInOut == null || !oldInOut.first().isSame(in) || !oldInOut.second().isSame(out)) {
                     stillChanging = true;
-                    liveInOutMap.put(b, new Tuple.Two<>(in, out));
+                    liveInOutMap.put(Cfg.Block.getLabel(b), new Tuple.Two<>(in, out));
                 }
             }
         }
@@ -217,7 +217,7 @@ public class Liveness {
         }
     }
 
-    public HashMap<Object, Tuple.Two<Set<Id>, Set<Id>>>
+    public HashMap<Label, Tuple.Two<Set<Id>, Set<Id>>>
     doitProgram(Cfg.Program.T prog) {
         switch (prog) {
             case Cfg.Program.Singleton(
