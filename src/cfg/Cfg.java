@@ -89,6 +89,10 @@ public class Cfg {
             public int hashCode() {
                 return this.id().hashCode();
             }
+
+            public Id Id() {
+                return id;
+            }
         }
 
         public static void pp(T dec) {
@@ -293,9 +297,15 @@ public class Cfg {
         // "x" should not be "null", even if the exp is not used.
         public record Assign(Id x,
                              Exp.T exp) implements T {
+            public Id Id() {
+                return x;
+            }
         }
 
         public record AssignArray(Id x, Exp.T index, Exp.T exp) implements T {
+            public Id Id() {
+                return x;
+            }
         }
 
 //        public static void dot(Dot d, String from, Stm.T t) {
@@ -308,6 +318,7 @@ public class Cfg {
 //                }
 //            }
 //        }
+
 
         static void pp(Stm.T t) {
             switch (t) {

@@ -18,9 +18,12 @@ public class Liveness {
     private final HashMap<Object, Tuple.Two<Set<Id>, Set<Id>>>
             liveInOutMap;
 
+    private Set<Id> formalsId;
+
     public Liveness() {
         useDefMap = new HashMap<>();
         liveInOutMap = new HashMap<>();
+        formalsId = new Set<>();
     }
 
     private Set<Id> getUse(Cfg.Exp.T exp) {
@@ -32,6 +35,7 @@ public class Liveness {
                 }
             }
             case Cfg.Exp.Call(Id func, List<Id> operands, Cfg.Type.T type) -> {
+                use.add(func);
                 for (Id id : operands) {
                     use.add(id);
                 }
@@ -120,13 +124,55 @@ public class Liveness {
                 transfer.forEach(this::doitTransfer);
                 Set<Id> in = new Set<>();
                 Set<Id> out = new Set<>();
-                for (Cfg.Transfer.T trans : transfer) {
-                    Tuple.Two<Set<Id>, Set<Id>> io = liveInOutMap.get(trans);
-                    if (io != null) {
-                        in.union(io.first());
-                        out.union(io.second());
+
+                // get in
+                for (Cfg.Stm.T stm : stms) {
+                    Tuple.Two<Set<Id>, Set<Id>> ud = useDefMap.get(stm);
+                    if (ud != null) {
+                        in.union(ud.first());
                     }
                 }
+                for (Cfg.Transfer.T trans: transfer) {
+                    Tuple.Two<Set<Id>, Set<Id>> ud = useDefMap.get(trans);
+                    if (ud != null) {
+                        in.union(ud.first());
+                    }
+                }
+                for (Cfg.Stm.T stm : stms) {
+                    Tuple.Two<Set<Id>, Set<Id>> ud = useDefMap.get(stm);
+                    if (ud != null) {
+                        in.sub(ud.second());
+                    }
+                }
+                for (Cfg.Transfer.T trans: transfer) {
+                    Tuple.Two<Set<Id>, Set<Id>> ud = useDefMap.get(trans);
+                    if (ud != null) {
+                        in.sub(ud.second());
+                    }
+                }
+
+                in.sub(formalsId);
+
+                // get out
+                for (Cfg.Transfer.T trans : transfer) {
+                    switch (trans) {
+                        case Cfg.Transfer.If(Id x, Cfg.Block.T b1, Cfg.Block.T b2) -> {
+                            Tuple.Two<Set<Id>, Set<Id>> ioB1 = liveInOutMap.get(b1);
+                            Tuple.Two<Set<Id>, Set<Id>> ioB2 = liveInOutMap.get(b2);
+                            if (ioB1 != null) out.union(ioB1.first());
+                            if (ioB2 != null) out.union(ioB2.first());
+                        }
+                        case Cfg.Transfer.Jmp(Cfg.Block.T target) -> {
+                            Tuple.Two<Set<Id>, Set<Id>> io = liveInOutMap.get(target);
+                            if (io != null) out.union(io.first());
+                        }
+                        case Cfg.Transfer.Ret(Id x) -> {
+                            // do nothing
+                        }
+                    }
+                }
+
+
                 Tuple.Two<Set<Id>, Set<Id>> oldInOut = liveInOutMap.get(b);
                 if (oldInOut == null || !oldInOut.first().isSame(in) || !oldInOut.second().isSame(out)) {
                     stillChanging = true;
@@ -151,20 +197,13 @@ public class Liveness {
                     List<Cfg.Dec.T> locals,
                     List<Cfg.Block.T> blocks
             ) -> {
+                formalsId = new Set<>();
+                formals.forEach(dec -> formalsId.add(((Cfg.Dec.Singleton) dec).Id()));
                 while (stillChanging) {
                     stillChanging = false;
                     blocks.forEach(this::doitBlock);
                 }
-                Set<Id> in = new Set<>();
-                Set<Id> out = new Set<>();
-                for (Cfg.Block.T block : blocks) {
-                    Tuple.Two<Set<Id>, Set<Id>> io = liveInOutMap.get(block);
-                    if (io != null) {
-                        in.union(io.first());
-                        out.union(io.second());
-                    }
-                }
-                liveInOutMap.put(func, new Tuple.Two<>(in, out));
+                stillChanging = true;
             }
         }
     }

@@ -27,14 +27,40 @@ public class ReachDef {
     // /////////////////////////////////////////////////////////
     // statement
     private void doitStm(Cfg.Stm.T t) {
-        throw new Todo();
+        Set<Cfg.Stm.T> gen = new Set<>();
+        Set<Cfg.Stm.T> kill = new Set<>();
+        switch(t) {
+            case Cfg.Stm.Assign(Id id, Cfg.Exp.T exp) -> {
+                gen.add(t);
+                for (Object obj : genKillMap.keySet()) {
+                    Cfg.Stm.T stm = (Cfg.Stm.T) obj;
+                    if (stm instanceof Cfg.Stm.Assign assign) {
+                        if (assign.Id().equals(id)) {
+                            kill.add(stm);
+                        }
+                    }
+                }
+            }
+            case Cfg.Stm.AssignArray(Id id, Cfg.Exp.T index, Cfg.Exp.T exp) -> {
+                gen.add(t);
+                for (Object obj : genKillMap.keySet()) {
+                    Cfg.Stm.T stm = (Cfg.Stm.T) obj;
+                    if (stm instanceof Cfg.Stm.AssignArray assignArray) {
+                        if (assignArray.Id().equals(id)) {
+                            kill.add(stm);
+                        }
+                    }
+                }
+            }
+        }
+        genKillMap.put(t, new Tuple.Two<>(gen, kill));
     }
     // end of statement
 
     // /////////////////////////////////////////////////////////
     // transfer
     private void doitTransfer(Cfg.Transfer.T t) {
-        throw new Todo();
+        genKillMap.put(t, new Tuple.Two<>(new Set<>(), new Set<>()));
     }
 
     // /////////////////////////////////////////////////////////
@@ -45,7 +71,24 @@ public class ReachDef {
                     Label label,
                     List<Cfg.Stm.T> stms,
                     List<Cfg.Transfer.T> transfer
-            ) -> throw new Todo();
+            ) -> {
+                stms.forEach(this::doitStm);
+                transfer.forEach(this::doitTransfer);
+                Set<Cfg.Stm.T> in = new Set<>(); // Todo: in should be predecessor's out
+                Set<Cfg.Stm.T> out = new Set<>();
+                for (Cfg.Stm.T stm : stms) {
+                    Tuple.Two<Set<Cfg.Stm.T>, Set<Cfg.Stm.T>> genKill = genKillMap.get(stm);
+                    if (genKill != null) {
+                        out.union(genKill.first());
+                        out.sub(genKill.second());
+                    }
+                }
+                Tuple.Two<Set<Cfg.Stm.T>, Set<Cfg.Stm.T>> oldInOut = new Tuple.Two<>(in, out);
+                if (oldInOut == null || !oldInOut.first().isSame(in) || !oldInOut.second().isSame(out)) {
+                    inOutMap.put(b, new Tuple.Two<>(in, out));
+                    stillChanging = true;
+                }
+            }
         }
     }
 
@@ -62,7 +105,22 @@ public class ReachDef {
                     List<Cfg.Dec.T> formals,
                     List<Cfg.Dec.T> locals,
                     List<Cfg.Block.T> blocks
-            ) -> throw new Todo();
+            ) -> {
+                while (stillChanging) {
+                    stillChanging = false;
+                    blocks.forEach(this::doitBlock);
+                }
+                Set<Cfg.Stm.T> in = new Set<>();
+                Set<Cfg.Stm.T> out = new Set<>();
+                for (Cfg.Block.T block : blocks) {
+                    Tuple.Two<Set<Cfg.Stm.T>, Set<Cfg.Stm.T>> io = inOutMap.get(block);
+                    if (io != null) {
+                        in.union(io.first());
+                        out.union(io.second());
+                    }
+                }
+                inOutMap.put(func, new Tuple.Two<>(in, out));
+            }
         }
     }
 
