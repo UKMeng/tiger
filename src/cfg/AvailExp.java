@@ -11,7 +11,7 @@ import java.util.List;
 public class AvailExp {
 
     // record information within a single "map"
-    private final HashMap<Object, Tuple.Two<Set<Cfg.Exp.T>, Set<Cfg.Exp.T>>>
+    private HashMap<Object, Tuple.Two<Set<Cfg.Exp.T>, Set<Cfg.Exp.T>>>
             genKillMap;
 
     // for "block", "transfer", and "statement".
@@ -23,11 +23,58 @@ public class AvailExp {
         inOutMap = new HashMap<>();
     }
 
+    private boolean expContains(Cfg.Exp.T exp, Id id) {
+        switch (exp) {
+            case Cfg.Exp.Bop(String op, List<Id> operands, Cfg.Type.T type) -> {
+                for (Id operand: operands) {
+                    if (operand.equals(id)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            default -> {
+                return false;
+            }
+        }
+    }
 
     // /////////////////////////////////////////////////////////
     // statement
     private void doitStm(Cfg.Stm.T t) {
-        throw new Todo();
+        if (genKillMap.containsKey(t)) {
+            return;
+        }
+        Set<Cfg.Exp.T> gen = new Set<>();
+        Set<Cfg.Exp.T> kill = new Set<>();
+        switch(t) {
+            case Cfg.Stm.Assign(Id id, Cfg.Exp.T exp) -> {
+                if (exp instanceof Cfg.Exp.Bop binOp) {
+                    gen.add(exp);
+                }
+                for (Object obj : genKillMap.keySet()) {
+                    Cfg.Stm.T stm = (Cfg.Stm.T) obj;
+                    Cfg.Exp.T exp_ = Cfg.Stm.GetExp(stm);
+                    if (expContains(exp_, id)) {
+                        kill.add(exp_);
+                    }
+                }
+            }
+            case Cfg.Stm.AssignArray(Id id, Cfg.Exp.T index, Cfg.Exp.T exp) -> {
+                if (exp instanceof Cfg.Exp.Bop binOp) {
+                    gen.add(exp);
+                }
+                for (Object obj : genKillMap.keySet()) {
+                    Cfg.Stm.T stm = (Cfg.Stm.T) obj;
+                    Cfg.Exp.T exp_ = Cfg.Stm.GetExp(stm);
+                    if (expContains(exp_, id)) {
+                        kill.add(exp_);
+                    }
+                }
+            }
+        }
+
+        genKillMap.put(t, new Tuple.Two<>(gen, kill));
     }
     // end of statement
 
@@ -45,7 +92,22 @@ public class AvailExp {
                     Label label,
                     List<Cfg.Stm.T> stms,
                     List<Cfg.Transfer.T> transfer
-            ) -> throw new Todo();
+            ) -> {
+                stms.forEach(this::doitStm);
+
+                Set<Cfg.Exp.T> gen = new Set<>();
+                Set<Cfg.Exp.T> kill = new Set<>();
+                Set<Cfg.Exp.T> in = new Set<>();
+                Set<Cfg.Exp.T> out = new Set<>();
+
+                for (Cfg.Stm.T stm: stms) {
+                    Tuple.Two<Set<Cfg.Exp.T>, Set<Cfg.Exp.T>> genKill = genKillMap.get(stm);
+                    gen.union(genKill.first());
+                    kill.union(genKill.second());
+                }
+
+                gen.sub(kill);
+            }
         }
     }
 
@@ -63,7 +125,14 @@ public class AvailExp {
                     List<Cfg.Dec.T> formals,
                     List<Cfg.Dec.T> locals,
                     List<Cfg.Block.T> blocks
-            ) -> throw new Todo();
+            ) -> {
+                genKillMap = new HashMap<>();
+                while (stillChanging) {
+                    stillChanging = false;
+                    blocks.forEach(this::doitBlock);
+                }
+                stillChanging = true;
+            }
         }
     }
 

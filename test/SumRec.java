@@ -8,16 +8,24 @@ class Doit {
     public int doit(int n) {
         int sum;
         int test;
-        int y;
+        int a;
+        int b;
+        int c;
+        int d;
+        int e;
+        int g;
 
-        test = 0;
-        test = 1;
-        y = test;
+        a = (b + c) + g;
+        d = (b + c) - e;
+        b = 1;
+
         if (n < 1) {
             sum = 0;
+            sum = a + d;
+            test = b + c;
         }
         else
             sum = n + (this.doit(n - 1));
-        return sum;
+        return sum + test;
     }
 }

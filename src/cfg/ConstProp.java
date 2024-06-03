@@ -31,7 +31,6 @@ public class ConstProp {
                         id2 = constMap.get(id2);
                     }
                     constMap.put(stmId, id2);
-                    System.out.println(id2.toString());
                     return new Cfg.Exp.Eid(id2, type);
                 }
                 return exp;

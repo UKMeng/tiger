@@ -8,6 +8,7 @@ import util.Todo;
 import java.io.Serializable;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Objects;
 
 public class Cfg {
 
@@ -207,6 +208,21 @@ public class Cfg {
         public record Bop(String op,
                           List<Id> operands,
                           Type.T type) implements T {
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                Bop bop = (Bop) o;
+                return Objects.equals(op, bop.op) &&
+                        Objects.equals(operands, bop.operands) &&
+                        Objects.equals(type, bop.type);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(op, operands, type);
+            }
+
         }
 
         public record Call(Id func,
@@ -305,6 +321,17 @@ public class Cfg {
         public record AssignArray(Id x, Exp.T index, Exp.T exp) implements T {
             public Id Id() {
                 return x;
+            }
+        }
+
+        public static Cfg.Exp.T GetExp(Stm.T t) {
+            switch (t) {
+                case Assign(_, Exp.T exp) -> {
+                    return exp;
+                }
+                case AssignArray(_, _, Exp.T exp) -> {
+                    return exp;
+                }
             }
         }
 
