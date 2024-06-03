@@ -19,6 +19,7 @@ public class Liveness {
             liveInOutMap;
 
     private Set<Id> formalsId;
+    private Set<Id> localsId;
 
     public Liveness() {
         useDefMap = new HashMap<>();
@@ -120,6 +121,9 @@ public class Liveness {
                     List<Cfg.Stm.T> stms,
                     List<Cfg.Transfer.T> transfer
             ) -> {
+                Tuple.Two<Set<Id>, Set<Id>> oldInOut = liveInOutMap.get(b);
+                Set<Id> oldOut = oldInOut == null ? new Set<>() : oldInOut.second().clone();
+
                 stms.forEach(this::doitStm);
                 transfer.forEach(this::doitTransfer);
                 Set<Id> in = new Set<>();
@@ -142,15 +146,18 @@ public class Liveness {
                     Tuple.Two<Set<Id>, Set<Id>> ud = useDefMap.get(stm);
                     if (ud != null) {
                         in.sub(ud.second());
+                        oldOut.sub(ud.second());
                     }
                 }
                 for (Cfg.Transfer.T trans: transfer) {
                     Tuple.Two<Set<Id>, Set<Id>> ud = useDefMap.get(trans);
                     if (ud != null) {
                         in.sub(ud.second());
+                        oldOut.sub(ud.second());
                     }
                 }
 
+                in.union(oldOut);
                 in.sub(formalsId);
 
                 // get out
@@ -173,7 +180,7 @@ public class Liveness {
                 }
 
 
-                Tuple.Two<Set<Id>, Set<Id>> oldInOut = liveInOutMap.get(b);
+
                 if (oldInOut == null || !oldInOut.first().isSame(in) || !oldInOut.second().isSame(out)) {
                     stillChanging = true;
                     liveInOutMap.put(b, new Tuple.Two<>(in, out));
@@ -198,7 +205,9 @@ public class Liveness {
                     List<Cfg.Block.T> blocks
             ) -> {
                 formalsId = new Set<>();
+                localsId = new Set<>();
                 formals.forEach(dec -> formalsId.add(((Cfg.Dec.Singleton) dec).Id()));
+                locals.forEach(dec -> localsId.add(((Cfg.Dec.Singleton) dec).Id()));
                 while (stillChanging) {
                     stillChanging = false;
                     blocks.forEach(this::doitBlock);

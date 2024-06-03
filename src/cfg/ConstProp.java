@@ -66,8 +66,8 @@ public class ConstProp {
             ) -> {
                 HashMap<Object, Tuple.Two<Set<Cfg.Stm.T>, Set<Cfg.Stm.T>>>
                         inOutMap = new ReachDef().doitProgram(prog);
-                var newFunctions =
-                        functions.stream().map(this::doitFunction).toList();
+//                var newFunctions =
+//                        functions.stream().map(this::doitFunction).toList();
                 // TODO: your code here:
                 //
 
