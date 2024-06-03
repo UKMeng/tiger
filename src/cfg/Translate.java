@@ -490,7 +490,7 @@ public class Translate {
                         ast,
                         new ast.PrettyPrinter()::ppProgram,
                         (x) -> {
-                            x = new ConstProp().doitProgram(x);
+                            x = new CopyProp().doitProgram(x);
 
                             Cfg.Program.pp(x);
                             if (Control.Dot.beingDotted("cfg")) {
