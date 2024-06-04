@@ -17,7 +17,6 @@ class Doit {
 
         a = (b + c) + g;
         d = (b + c) - e;
-        b = 1;
 
         if (n < 1) {
             sum = 0;

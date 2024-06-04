@@ -491,7 +491,7 @@ public class Translate {
                         new ast.PrettyPrinter()::ppProgram,
                         (x) -> {
                             //x = new CopyProp().doitProgram(x);
-                            new AvailExp().doitProgram(x);
+                            x = new Cse().doitProgram(x);
                             Cfg.Program.pp(x);
                             if (Control.Dot.beingDotted("cfg")) {
                                 Cfg.Program.dot(x);
