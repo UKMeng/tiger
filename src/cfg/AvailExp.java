@@ -81,7 +81,6 @@ public class AvailExp {
     // /////////////////////////////////////////////////////////
     // transfer
     private void doitTransfer(Cfg.Transfer.T t) {
-        throw new Todo();
     }
 
     // /////////////////////////////////////////////////////////
@@ -93,20 +92,65 @@ public class AvailExp {
                     List<Cfg.Stm.T> stms,
                     List<Cfg.Transfer.T> transfer
             ) -> {
+                Tuple.Two<Set<Cfg.Exp.T>, Set<Cfg.Exp.T>> oldInOut = inOutMap.get(b);
+                Set<Cfg.Exp.T> oldIn = oldInOut == null ? new Set<>() : oldInOut.first();
+                Set<Cfg.Exp.T> in = oldIn.clone();
+
                 stms.forEach(this::doitStm);
 
                 Set<Cfg.Exp.T> gen = new Set<>();
                 Set<Cfg.Exp.T> kill = new Set<>();
-                Set<Cfg.Exp.T> in = new Set<>();
                 Set<Cfg.Exp.T> out = new Set<>();
 
                 for (Cfg.Stm.T stm: stms) {
                     Tuple.Two<Set<Cfg.Exp.T>, Set<Cfg.Exp.T>> genKill = genKillMap.get(stm);
-                    gen.union(genKill.first());
-                    kill.union(genKill.second());
+                    if (genKill != null) {
+                        gen.union(genKill.first());
+                        kill.union(genKill.second());
+                    }
                 }
 
+                gen.union(in);
                 gen.sub(kill);
+                out = gen.clone();
+
+                for (Cfg.Transfer.T t : transfer) {
+                    switch(t) {
+                        case Cfg.Transfer.If(Id id, Cfg.Block.T b1, Cfg.Block.T b2) -> {
+                            Tuple.Two<Set<Cfg.Exp.T>, Set<Cfg.Exp.T>> inoutB1 = inOutMap.get(b1);
+                            Tuple.Two<Set<Cfg.Exp.T>, Set<Cfg.Exp.T>> inoutB2 = inOutMap.get(b2);
+                            if (inoutB1 == null) {
+                                inoutB1 = new Tuple.Two<>(out, new Set<>());
+                                inOutMap.put(b1, inoutB1);
+                            } else {
+                                inoutB1.first().union(out);
+                            }
+                            if (inoutB2 == null) {
+                                inoutB2 = new Tuple.Two<>(out, new Set<>());
+                                inOutMap.put(b2, inoutB2);
+                            } else {
+                                inoutB2.first().union(out);
+                            }
+                        }
+                        case Cfg.Transfer.Jmp(Cfg.Block.T target) -> {
+                            Tuple.Two<Set<Cfg.Exp.T>, Set<Cfg.Exp.T>> inout = inOutMap.get(target);
+                            if (inout == null) {
+                                inout = new Tuple.Two<>(out, new Set<>());
+                                inOutMap.put(target, inout);
+                            } else {
+                                inout.first().union(out);
+                            }
+                        }
+                        case Cfg.Transfer.Ret(Id id) -> {
+                            // do nothing
+                        }
+                    }
+                }
+
+                if (oldInOut == null || !oldInOut.second().isSame(out)) {
+                    inOutMap.put(b, new Tuple.Two<>(oldIn, out));
+                    stillChanging = true;
+                }
             }
         }
     }
