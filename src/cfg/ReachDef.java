@@ -27,14 +27,43 @@ public class ReachDef {
     // /////////////////////////////////////////////////////////
     // statement
     private void doitStm(Cfg.Stm.T t) {
-        throw new Todo();
+        if (genKillMap.containsKey(t)) {
+            return;
+        }
+        Set<Cfg.Stm.T> gen = new Set<>();
+        Set<Cfg.Stm.T> kill = new Set<>();
+        switch(t) {
+            case Cfg.Stm.Assign(Id id, Cfg.Exp.T exp) -> {
+                gen.add(t);
+                for (Object obj : genKillMap.keySet()) {
+                     Cfg.Stm.T stm = (Cfg.Stm.T) obj;
+                    if (stm instanceof Cfg.Stm.Assign assign) {
+                        if (assign.Id().equals(id)) {
+                            kill.add(stm);
+                        }
+                    }
+                }
+            }
+            case Cfg.Stm.AssignArray(Id id, Cfg.Exp.T index, Cfg.Exp.T exp) -> {
+                gen.add(t);
+                for (Object obj : genKillMap.keySet()) {
+                    Cfg.Stm.T stm = (Cfg.Stm.T) obj;
+                    if (stm instanceof Cfg.Stm.AssignArray assignArray) {
+                        if (assignArray.Id().equals(id)) {
+                            kill.add(stm);
+                        }
+                    }
+                }
+            }
+        }
+        genKillMap.put(t, new Tuple.Two<>(gen, kill));
     }
     // end of statement
 
     // /////////////////////////////////////////////////////////
     // transfer
     private void doitTransfer(Cfg.Transfer.T t) {
-        throw new Todo();
+        //genKillMap.put(t, new Tuple.Two<>(new Set<>(), new Set<>()));
     }
 
     // /////////////////////////////////////////////////////////
@@ -45,7 +74,68 @@ public class ReachDef {
                     Label label,
                     List<Cfg.Stm.T> stms,
                     List<Cfg.Transfer.T> transfer
-            ) -> throw new Todo();
+            ) -> {
+                Tuple.Two<Set<Cfg.Stm.T>, Set<Cfg.Stm.T>> oldInOut = inOutMap.get(b);
+                Set<Cfg.Stm.T> oldIn = oldInOut == null ? new Set<>() : oldInOut.first();
+                Set<Cfg.Stm.T> in = oldIn.clone();
+
+                stms.forEach(this::doitStm);
+                transfer.forEach(this::doitTransfer);
+                Set<Cfg.Stm.T> out = new Set<>();
+                Set<Cfg.Stm.T> gen = new Set<>();
+                Set<Cfg.Stm.T> kill = new Set<>();
+                for (Cfg.Stm.T stm : stms) {
+                    Tuple.Two<Set<Cfg.Stm.T>, Set<Cfg.Stm.T>> genKill = genKillMap.get(stm);
+                    if (genKill != null) {
+                        gen.union(genKill.first());
+                        kill.union(genKill.second());
+                    }
+                }
+
+                //in.sub(kill);
+
+                gen.union(in);
+                gen.sub(kill);
+                out = gen.clone();
+
+                for (Cfg.Transfer.T t : transfer) {
+                    switch(t) {
+                        case Cfg.Transfer.If(Id id, Cfg.Block.T b1, Cfg.Block.T b2) -> {
+                            Tuple.Two<Set<Cfg.Stm.T>, Set<Cfg.Stm.T>> inoutB1 = inOutMap.get(b1);
+                            Tuple.Two<Set<Cfg.Stm.T>, Set<Cfg.Stm.T>> inoutB2 = inOutMap.get(b2);
+                            if (inoutB1 == null) {
+                                inoutB1 = new Tuple.Two<>(out, new Set<>());
+                                inOutMap.put(b1, inoutB1);
+                            } else {
+                                inoutB1.first().union(out);
+                            }
+                            if (inoutB2 == null) {
+                                inoutB2 = new Tuple.Two<>(out, new Set<>());
+                                inOutMap.put(b2, inoutB2);
+                            } else {
+                                inoutB2.first().union(out);
+                            }
+                        }
+                        case Cfg.Transfer.Jmp(Cfg.Block.T target) -> {
+                            Tuple.Two<Set<Cfg.Stm.T>, Set<Cfg.Stm.T>> inout = inOutMap.get(target);
+                            if (inout == null) {
+                                inout = new Tuple.Two<>(out, new Set<>());
+                                inOutMap.put(target, inout);
+                            } else {
+                                inout.first().union(out);
+                            }
+                        }
+                        case Cfg.Transfer.Ret(Id id) -> {
+                            // do nothing
+                        }
+                    }
+                }
+
+                if (oldInOut == null || !oldInOut.second().isSame(out)) {
+                    inOutMap.put(b, new Tuple.Two<>(oldIn, out));
+                    stillChanging = true;
+                }
+            }
         }
     }
 
@@ -62,7 +152,13 @@ public class ReachDef {
                     List<Cfg.Dec.T> formals,
                     List<Cfg.Dec.T> locals,
                     List<Cfg.Block.T> blocks
-            ) -> throw new Todo();
+            ) -> {
+                while (stillChanging) {
+                    stillChanging = false;
+                    blocks.forEach(this::doitBlock);
+                }
+                stillChanging = true;
+            }
         }
     }
 

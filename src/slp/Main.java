@@ -4,8 +4,9 @@ public class Main {
 
     public static void main(String[] args) {
         Main obj = new Main();
-        obj.doit(SamplePrograms.sample1);
-        obj.doit(SamplePrograms.sample2);
+        //obj.doit(SamplePrograms.sample1);
+        //obj.doit(SamplePrograms.sample2);
+        obj.doit(SamplePrograms.sample3);
     }
 
     public void doit(Slp.Stm.T prog) {

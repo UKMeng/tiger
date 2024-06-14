@@ -71,6 +71,8 @@ public class Control {
     public static class X64 {
         public static boolean embedComment = false;
         public static boolean dump = false;
+        public static boolean classTableDump = false;
+        public static boolean methodTableDump = false;
     }
 }
 

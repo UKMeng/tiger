@@ -38,4 +38,8 @@ public class Set<X> {
         }
         return true;
     }
+
+    public HashSet<X> getSet() {
+        return this.set;
+    }
 }

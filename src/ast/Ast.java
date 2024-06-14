@@ -57,7 +57,7 @@ public class Ast {
         }
 
         // singleton design pattern
-        private static final Type.T boolTy = new IntArray();
+        private static final Type.T boolTy = new Boolean();
         private static final Type.T intTy = new Int();
         private static final Type.T intArrayTy = new IntArray();
         private static final HashMap<Id, Type.T> classTyContainer = new HashMap<>();
@@ -92,7 +92,9 @@ public class Ast {
         public static void output(Type.T ty) {
             switch (ty) {
                 case Type.Boolean() -> System.out.println("boolean");
-                case Type.Int() -> System.out.print("int");
+                case Type.Int() -> System.out.println("int");
+                case Type.IntArray() -> System.out.println("int[]");
+                case Type.ClassType(Id id) -> System.out.println(id);
                 default -> throw new Todo();
             }
         }
@@ -290,6 +292,22 @@ public class Ast {
                 }
             }
         }
+
+        public static Id getExtends(Class.T cls) {
+            switch (cls) {
+                case Singleton(
+                        Id classId,
+                        Id extends_,
+                        List<Dec.T> decs,
+                        List<Method.T> methods,
+                        Tuple.One<T> parent
+                ) -> {
+                    return extends_;
+                }
+            }
+        }
+
+
     }
 
     // main class
@@ -300,7 +318,23 @@ public class Ast {
 
         public record Singleton(Id classId,
                                 AstId arg,
-                                Stm.T stm) implements T {
+                                Stm.T stm  ) implements T {
+        }
+
+        public static Id getClassId(T mainClass) {
+            switch (mainClass) {
+                case Singleton(Id classId, AstId arg, Stm.T stm) -> {
+                    return classId;
+                }
+            }
+        }
+
+        public static Stm.T getStm(T mainClass) {
+            switch (mainClass) {
+                case Singleton(Id classId, AstId arg, Stm.T stm) -> {
+                    return stm;
+                }
+            }
         }
     }
 

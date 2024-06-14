@@ -6,7 +6,9 @@ import util.Label;
 import util.Todo;
 
 import java.io.Serializable;
+import java.sql.Statement;
 import java.util.List;
+import java.util.Objects;
 
 public class Cfg {
 
@@ -87,6 +89,10 @@ public class Cfg {
             @Override
             public int hashCode() {
                 return this.id().hashCode();
+            }
+
+            public Id Id() {
+                return id;
             }
         }
 
@@ -200,12 +206,27 @@ public class Cfg {
     // expression
     public static class Exp {
         public sealed interface T extends Serializable
-                permits Bop, Call, Eid, GetMethod, Int, New, Print {
+                permits Bop, Call, Eid, GetMethod, Int, New, Print, Length, IntArraySelect, NewIntArray {
         }
 
         public record Bop(String op,
                           List<Id> operands,
                           Type.T type) implements T {
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                Bop bop = (Bop) o;
+                return Objects.equals(op, bop.op) &&
+                        Objects.equals(operands, bop.operands) &&
+                        Objects.equals(type, bop.type);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(op, operands, type);
+            }
+
         }
 
         public record Call(Id func,
@@ -234,6 +255,16 @@ public class Cfg {
         public record Print(Id x) implements T {
         }
 
+        public record Length(Id x) implements T {
+        }
+
+        public record IntArraySelect(Id array,
+                                     Id index) implements T {
+        }
+
+        public record NewIntArray(Id size) implements T {
+        }
+
         public static void pp(Exp.T t) {
             switch (t) {
                 case Bop(String op, List<Id> operands, Type.T type) -> {
@@ -258,6 +289,18 @@ public class Cfg {
                 case Int(int n) -> say(STR."\{n}");
                 case New(Id classId) -> say(STR."new \{classId.toString()}()");
                 case Print(Id x) -> say(STR."print(\{x.toString()})");
+                case Length(Id x) -> say(STR."length(\{x.toString()})");
+                case IntArraySelect(Id array, Id index) -> say(STR."\{array.toString()}[\{index.toString()}]");
+                case NewIntArray(Id size) -> say(STR."new int[\{size.toString()}]");
+                default -> throw new Todo(t);
+            }
+        }
+
+        public static Id GetId(Exp.T t) {
+            switch (t) {
+                case Eid(Id x, Type.T type) -> {
+                    return x;
+                }
                 default -> throw new Todo(t);
             }
         }
@@ -268,20 +311,58 @@ public class Cfg {
     // statement
     public static class Stm {
         public sealed interface T extends Serializable
-                permits Assign {
+                permits Assign, AssignArray {
         }
 
         // assign
         // "x" should not be "null", even if the exp is not used.
         public record Assign(Id x,
                              Exp.T exp) implements T {
+            public Id Id() {
+                return x;
+            }
         }
+
+        public record AssignArray(Id x, Exp.T index, Exp.T exp) implements T {
+            public Id Id() {
+                return x;
+            }
+        }
+
+        public static Cfg.Exp.T GetExp(Stm.T t) {
+            switch (t) {
+                case Assign(_, Exp.T exp) -> {
+                    return exp;
+                }
+                case AssignArray(_, _, Exp.T exp) -> {
+                    return exp;
+                }
+            }
+        }
+
+//        public static void dot(Dot d, String from, Stm.T t) {
+//            switch (t) {
+//                case Stm.Assign(
+//                        Id x,
+//                        Exp.T exp
+//                ) -> {
+//                    d.insert(from, x.toString());
+//                }
+//            }
+//        }
+
 
         static void pp(Stm.T t) {
             switch (t) {
                 case Assign(Id x, Exp.T exp) -> {
                     printSpaces();
                     say(STR."\{x.toString()} = ");
+                    Exp.pp(exp);
+                    sayln(";");
+                }
+                case AssignArray(Id x, Exp.T index, Exp.T exp) -> {
+                    printSpaces();
+                    say(STR."\{x.toString()}[\{Cfg.Exp.GetId(index).toString()}] = ");
                     Exp.pp(exp);
                     sayln(";");
                 }
@@ -388,10 +469,12 @@ public class Cfg {
             switch (t) {
                 case Singleton(
                         Label label,
-                        List<Stm.T> _,
+                        List<Stm.T> stms,
                         List<Transfer.T> trans
-                ) -> trans.forEach((tr) -> Transfer.dot(d,
-                        label.toString(), tr));
+                ) -> {
+                    //stms.forEach((stm) -> Stm.dot(d, label.toString(), stm));
+                    trans.forEach((tr) -> Transfer.dot(d, label.toString(), tr));
+                }
             }
         }
 
@@ -534,6 +617,8 @@ public class Cfg {
 
     // whole program
     public static class Program {
+        private static CfgSize cfgSize = new CfgSize();
+
         public sealed interface T extends Serializable
                 permits Singleton {
         }
@@ -574,6 +659,59 @@ public class Cfg {
                     structs.forEach(Struct::pp);
                     // functions:
                     functions.forEach(Function::pp);
+                }
+            }
+            cfgSize.size(prog);
+        }
+    }
+
+    // Exercise 2
+    public static class CfgSize {
+        private int numFunctions;
+        private int numBlocks;
+        private int numStms;
+
+        public CfgSize() {
+            this.numFunctions = 0;
+            this.numBlocks = 0;
+            this.numStms = 0;
+        }
+
+        public void size(Program.T p) {
+            System.out.println("<#methods, #blocks, #statements>");
+            System.out.println("---------------------------------");
+            switch (p) {
+                case Program.Singleton(_, _, _, _, List<Function.T> functions) -> {
+                    this.numFunctions = functions.size();
+                    for (Function.T function: functions) {
+                        sizeOfFunction(function);
+                    }
+                }
+            }
+            System.out.println("---------------------------------");
+            System.out.println("subtotal " + this.numBlocks + ", " + this.numStms);
+        }
+
+        private void sizeOfFunction(Function.T f) {
+            switch (f) {
+                case Function.Singleton(_, _, Id functionId, _, _, List<Block.T> blocks) -> {
+                    String functionName = functionId.toString();
+                    int blockNum = blocks.size();
+                    int statementNum = 0;
+                    for (Block.T block: blocks) {
+                        statementNum += sizeOfBlock(block);
+                    }
+                    System.out.println("<\"" + functionName + "\", " + blockNum + ", " + statementNum + ">");
+                }
+            }
+        }
+
+        private int sizeOfBlock(Block.T b) {
+            switch (b) {
+                case Block.Singleton(_, List<Stm.T> stms, _) -> {
+                    this.numBlocks++;
+                    this.numStms += stms.size();
+                    return stms.size();
                 }
             }
         }
