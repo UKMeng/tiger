@@ -58,8 +58,27 @@ public class Layout {
                 // the virtual function table pointer
                 offset += X64.WordSize.bytesOfWord;
                 for (var entry : fields) {
-                    // TODO: lab 4, exercise 2
-                    offset += X64.WordSize.bytesOfWord;
+                    switch(entry) {
+                        case Cfg.Dec.Singleton(
+                                Cfg.Type.T type,
+                                Id id
+                        ) -> {
+                            switch(type) {
+                                case Cfg.Type.Int() -> {
+                                    offset += X64.WordSize.bytesOfWord;
+                                }
+                                case Cfg.Type.ClassType(Id cid) -> {
+                                    offset += sizeOfClassProp.get(cid);
+                                }
+                                case Cfg.Type.CodePtr() -> {
+                                    offset += X64.WordSize.bytesOfWord;
+                                }
+                                case Cfg.Type.IntArray() -> {
+                                    offset += X64.WordSize.bytesOfWord;
+                                }
+                            }
+                        }
+                    }
                 }
                 sizeOfClassProp.put(clsId, offset);
             }
@@ -105,17 +124,48 @@ public class Layout {
                                                     List<Cfg.Dec.T> fields
                                             ) -> {
                                                 System.out.println(STR."class \{clsId.toString()} size = \{sizeOfClassProp.get(clsId).toString()}");
+                                                int offset = 0;
+                                                // the virtual function table pointer
+                                                offset += X64.WordSize.bytesOfWord;
                                                 for (var entry : fields) {
-                                                    // TODO: lab 4, exercise 2
-                                                    throw new Todo();
+                                                    switch(entry) {
+                                                        case Cfg.Dec.Singleton(
+                                                                Cfg.Type.T type,
+                                                                Id id
+                                                        ) -> {
+                                                            System.out.println(STR."  field \{id.toString()} offset = \{offset}");
+                                                            switch(type) {
+                                                                case Cfg.Type.Int() -> {
+                                                                    offset += X64.WordSize.bytesOfWord;
+                                                                }
+                                                                case Cfg.Type.ClassType(Id cid) -> {
+                                                                    offset += sizeOfClassProp.get(cid);
+                                                                }
+                                                                case Cfg.Type.CodePtr() -> {
+                                                                    offset += X64.WordSize.bytesOfWord;
+                                                                }
+                                                                case Cfg.Type.IntArray() -> {
+                                                                    offset += X64.WordSize.bytesOfWord;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
                                     });
                                     //
                                     vtables.forEach((s) -> {
-                                        // TODO: lab 4, exercise 2.
-                                        throw new Todo();
+                                        switch(s) {
+                                            case Cfg.Vtable.Singleton(
+                                                    Id clsId,
+                                                    List<Cfg.Vtable.Entry> funcAndTypes
+                                            ) -> {
+                                                for (Cfg.Vtable.Entry entry : funcAndTypes) {
+                                                    System.out.println(STR."method \{entry.functionId().toString()} offset = \{methodOffsetProp.get(entry.functionId()).toString()}");
+                                                }
+                                            }
+                                        }
                                     });
                                 });
                 trace.doit();

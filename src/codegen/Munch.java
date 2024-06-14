@@ -383,6 +383,7 @@ public class Munch {
                     default -> throw new Error(s);
                 }
             }
+            default -> throw new Todo(s);
         }
     }
 
