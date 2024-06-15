@@ -160,6 +160,21 @@ public class Munch {
         this.currentInstrs.add(instr);
     }
 
+    private void genStore(Id dest,
+                          Id src,
+                          int offset) {
+        List<X64.VirtualReg.T> uses, defs;
+        uses = List.of(new X64.VirtualReg.Vid(src, new X64.Type.Int()));
+        defs = List.of(new X64.VirtualReg.Vid(dest, new X64.Type.Int()));
+        X64.Instr.T instr = new X64.Instr.Singleton(
+                Store,
+                (uarg, darg) ->
+                        STR."movq\t\{uarg.getFirst()}, \{offset}(\{darg.getFirst()})",
+                uses,
+                defs);
+        this.currentInstrs.add(instr);
+    }
+
     // generate a binary instruction
     private void genBop(String bop,
                         Id dest,
@@ -252,6 +267,7 @@ public class Munch {
         this.currentInstrs.add(instr);
     }
 
+
     // You should extend this function to add
     // instruction selection code for the remaining features in CFG.
     // TODO: lab 4, exercise 3:
@@ -310,6 +326,26 @@ public class Munch {
                                         defs);
                                 this.currentInstrs.add(instr);
                             }
+                            // my code
+                            case "!" -> {
+                                genMoveId2Id(id, operands.get(0), targetType);
+                                uses = List.of();
+                                defs = List.of(new X64.VirtualReg.Vid(id, targetType));
+                                instr = new X64.Instr.Singleton(
+                                        MoveConst,
+                                        (_, darg) -> STR."xorq\t$1, \{darg.getFirst()}",
+                                        uses,
+                                        defs);
+                                this.currentInstrs.add(instr);
+                            }
+                            case "*" -> {
+                                genMoveId2Id(id, operands.get(0), targetType);
+                                genBop("imulq", id, operands.get(1));
+                            }
+                            case "&&" -> {
+                                genMoveId2Id(id, operands.get(0), targetType);
+                                genBop("andq", id, operands.get(1));
+                            }
                             default -> throw new Error(op);
                         }
                     } // end of "bop"
@@ -321,13 +357,15 @@ public class Munch {
                         X64.Type.T targetType = this.allVars.get(id);
                         for (int i = 0; i < args.size(); i++) {
                             // we only process no more than 6 arguments
+                            Id value = args.get(i);
                             if (i > 5) {
                                 // TODO: lab 4, exercise 4.
-                                throw new Todo("#arguments > 6");
+                                int offset = (i - 6) * X64.WordSize.bytesOfWord;
+                                genStore(X64.Register.argPassingRegs.get(6), value, offset);
+                            } else {
+                                Id argReg = X64.Register.argPassingRegs.get(i);
+                                genMoveId2Reg(argReg, value, new X64.Type.Int());
                             }
-                            Id value = args.get(i);
-                            Id argReg = X64.Register.argPassingRegs.get(i);
-                            genMoveId2Reg(argReg, value, new X64.Type.Int());
                         }
                         genCallIndirect(func);
                         genMoveReg2Id(id, X64.Register.retReg, munchType(retType));
@@ -380,8 +418,58 @@ public class Munch {
                         genMoveId2Reg(argReg, x, new X64.Type.Int());
                         genCallDirect("Tiger_print");
                     }
+                    // my code
+                    case Cfg.Exp.Length(Id x) -> {
+                        Id argReg = X64.Register.argPassingRegs.getFirst();
+                        genMoveId2Reg(argReg, x, new X64.Type.IntArray());
+                        genCallDirect("Tiger_arrayLength");
+                        genMoveReg2Id(id, X64.Register.retReg, new X64.Type.Int());
+                    }
+                    case Cfg.Exp.IntArraySelect(Id x, Id index) -> {
+                        Id argReg0 = X64.Register.argPassingRegs.getFirst();
+                        genMoveId2Reg(argReg0, x, new X64.Type.IntArray());
+                        Id argReg1 = X64.Register.argPassingRegs.get(1);
+                        genMoveId2Reg(argReg1, index, new X64.Type.Int());
+                        genCallDirect("Tiger_arraySelect");
+                        genMoveReg2Id(id, X64.Register.retReg, new X64.Type.Int());
+                    }
+                    case Cfg.Exp.NewIntArray(Id size) -> {
+                        Id argReg = X64.Register.argPassingRegs.getFirst();
+                        genMoveId2Reg(argReg, size, new X64.Type.Int());
+                        genCallDirect("Tiger_newArray");
+                        genMoveReg2Id(id, X64.Register.retReg, new X64.Type.IntArray());
+                    }
                     default -> throw new Error(s);
                 }
+            }
+            case Cfg.Stm.AssignArray(Id x, Cfg.Exp.T index, Cfg.Exp.T exp) -> {
+                switch (index) {
+                    case Cfg.Exp.Int(int n) -> {
+                        Id argReg0 = X64.Register.argPassingRegs.getFirst();
+                        genMoveId2Reg(argReg0, x, new X64.Type.IntArray());
+                        Id argReg1 = X64.Register.argPassingRegs.get(1);
+                        genMoveConst2Reg(argReg1, n, new X64.Type.Int());
+                    }
+                    case Cfg.Exp.Eid(Id id, Cfg.Type.T type) -> {
+                        Id argReg0 = X64.Register.argPassingRegs.getFirst();
+                        genMoveId2Reg(argReg0, x, new X64.Type.IntArray());
+                        Id argReg1 = X64.Register.argPassingRegs.get(1);
+                        genMoveId2Reg(argReg1, id, new X64.Type.Int());
+                    }
+                    default -> throw new Error(index);
+                }
+                switch (exp) {
+                    case Cfg.Exp.Int(int n) -> {
+                        Id argReg2 = X64.Register.argPassingRegs.get(2);
+                        genMoveConst2Reg(argReg2, n, new X64.Type.Int());
+                    }
+                    case Cfg.Exp.Eid(Id id, Cfg.Type.T type) -> {
+                        Id argReg2 = X64.Register.argPassingRegs.get(2);
+                        genMoveId2Reg(argReg2, id, new X64.Type.Int());
+                    }
+                    default -> throw new Error(exp);
+                }
+                genCallDirect("Tiger_arrayUpdate");
             }
             default -> throw new Todo(s);
         }
@@ -483,21 +571,25 @@ public class Munch {
                         new LinkedList<>());
                 newEntryBlock.transfer().add(new X64.Transfer.Jmp(blocks.getFirst()));
                 blocks.addFirst(newEntryBlock);
+
+                this.currentInstrs = newEntryBlock.instrs();
                 // to move arguments:
                 int index = 0;
                 for (X64.Dec.T formal : formals) {
-                    if (index > 5) {
-                        // TODO: lab 4, exercise 4.
-                        throw new Todo("arguments > 6");
-                    }
                     switch (formal) {
                         case X64.Dec.Singleton(
                                 X64.Type.T type,
                                 Id id1
                         ) -> {
-                            genMoveReg2Id(id1,
-                                    X64.Register.argPassingRegs.get(index),
-                                    type);
+                            if (index > 5) {
+                                // TODO: lab 4, exercise 4.
+                                int offset = (index - 6) * X64.WordSize.bytesOfWord;
+                                genLoad(id1, X64.Register.argPassingRegs.get(6), offset);
+                            } else {
+                                genMoveReg2Id(id1,
+                                        X64.Register.argPassingRegs.get(index),
+                                        type);
+                            }
                         }
                     }
                     index++;

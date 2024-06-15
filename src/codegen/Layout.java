@@ -63,20 +63,21 @@ public class Layout {
                                 Cfg.Type.T type,
                                 Id id
                         ) -> {
-                            switch(type) {
-                                case Cfg.Type.Int() -> {
-                                    offset += X64.WordSize.bytesOfWord;
-                                }
-                                case Cfg.Type.ClassType(Id cid) -> {
-                                    offset += sizeOfClassProp.get(cid);
-                                }
-                                case Cfg.Type.CodePtr() -> {
-                                    offset += X64.WordSize.bytesOfWord;
-                                }
-                                case Cfg.Type.IntArray() -> {
-                                    offset += X64.WordSize.bytesOfWord;
-                                }
-                            }
+                            offset += X64.WordSize.bytesOfWord;
+//                            switch(type) {
+//                                case Cfg.Type.Int() -> {
+//                                    offset += X64.WordSize.bytesOfWord;
+//                                }
+//                                case Cfg.Type.ClassType(Id cid) -> {
+//                                    offset += sizeOfClassProp.get(cid);
+//                                }
+//                                case Cfg.Type.CodePtr() -> {
+//                                    offset += X64.WordSize.bytesOfWord;
+//                                }
+//                                case Cfg.Type.IntArray() -> {
+//                                    offset += X64.WordSize.bytesOfWord;
+//                                }
+//                            }
                         }
                     }
                 }
@@ -134,20 +135,21 @@ public class Layout {
                                                                 Id id
                                                         ) -> {
                                                             System.out.println(STR."  field \{id.toString()} offset = \{offset}");
-                                                            switch(type) {
-                                                                case Cfg.Type.Int() -> {
-                                                                    offset += X64.WordSize.bytesOfWord;
-                                                                }
-                                                                case Cfg.Type.ClassType(Id cid) -> {
-                                                                    offset += sizeOfClassProp.get(cid);
-                                                                }
-                                                                case Cfg.Type.CodePtr() -> {
-                                                                    offset += X64.WordSize.bytesOfWord;
-                                                                }
-                                                                case Cfg.Type.IntArray() -> {
-                                                                    offset += X64.WordSize.bytesOfWord;
-                                                                }
-                                                            }
+                                                            offset += X64.WordSize.bytesOfWord;
+//                                                            switch(type) {
+//                                                                case Cfg.Type.Int() -> {
+//                                                                    offset += X64.WordSize.bytesOfWord;
+//                                                                }
+//                                                                case Cfg.Type.ClassType(Id cid) -> {
+//                                                                    offset += sizeOfClassProp.get(cid);
+//                                                                }
+//                                                                case Cfg.Type.CodePtr() -> {
+//                                                                    offset += X64.WordSize.bytesOfWord;
+//                                                                }
+//                                                                case Cfg.Type.IntArray() -> {
+//                                                                    offset += X64.WordSize.bytesOfWord;
+//                                                                }
+//                                                            }
                                                         }
                                                     }
                                                 }
