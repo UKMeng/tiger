@@ -53,6 +53,15 @@ public class PrettyPrinter {
     // expressions
     public void ppExp(Exp.T e) {
         switch (e) {
+            case Exp.ArraySelect(
+                    Exp.T array,
+                    Exp.T index
+            ) -> {
+                ppExp(array);
+                sayLocal("[");
+                ppExp(index);
+                sayLocal("]");
+            }
             case Exp.ExpId(AstId aid) -> ppAstId(aid);
             case Exp.Call(
                     Exp.T callee,
@@ -65,10 +74,15 @@ public class PrettyPrinter {
                 sayLocal(STR.".");
                 ppAstId(methodId);
                 sayLocal("(");
-                for (Exp.T arg : args) {
-                    ppExp(arg);
-                    sayLocal(", ");
+                for (int i = 0; i < args.size(); i++) {
+                    ppExp(args.get(i));
+                    if (i < args.size() - 1)
+                        sayLocal(", ");
                 }
+//                for (Exp.T arg : args) {
+//                    ppExp(arg);
+//                    sayLocal(", ");
+//                }
                 sayLocal(")");
             }
             case Exp.NewObject(Id id) -> {
@@ -84,7 +98,34 @@ public class PrettyPrinter {
                 sayLocal(STR." \{bop} ");
                 ppExp(right);
             }
+            case Exp.BopBool(
+                    Exp.T left,
+                    String bop,
+                    Exp.T right
+            ) -> {
+                ppExp(left);
+                sayLocal(STR." \{bop} ");
+                ppExp(right);
+            }
             case Exp.This() -> sayLocal("this");
+            case Exp.False() -> sayLocal("false");
+            case Exp.True() -> sayLocal("true");
+            case Exp.Length(Exp.T array) -> {
+                ppExp(array);
+                sayLocal(".length");
+            }
+            case Exp.NewIntArray(Exp.T exp) -> {
+                sayLocal("new int[");
+                ppExp(exp);
+                sayLocal("]");
+            }
+            case Exp.Uop(
+                    String uop,
+                    Exp.T exp
+            ) -> {
+                sayLocal(STR." \{uop}");
+                ppExp(exp);
+            }
             default -> throw new Todo();
         }
     }
@@ -124,6 +165,34 @@ public class PrettyPrinter {
                 ppExp(exp);
                 sayLocal(";\n");
             }
+            case Stm.AssignArray(
+                    AstId aid,
+                    Exp.T index,
+                    Exp.T exp
+            ) -> {
+                say("");
+                ppAstId(aid);
+                sayLocal("[");
+                ppExp(index);
+                sayLocal("] = ");
+                ppExp(exp);
+                sayLocal(";\n");
+            }
+            case Stm.Block(List<Stm.T> stms) -> {
+                stms.forEach(this::ppStm);
+            }
+            case Stm.While(
+                    Exp.T cond,
+                    Stm.T body
+            ) -> {
+                say("while (");
+                ppExp(cond);
+                sayLocal(") {\n");
+                indent();
+                ppStm(body);
+                unIndent();
+                sayln("}");
+            }
             default -> throw new Todo();
         }
     }
@@ -132,6 +201,9 @@ public class PrettyPrinter {
     public void ppType(Type.T t) {
         switch (t) {
             case Type.Int() -> sayLocal("int");
+            case Type.IntArray() -> sayLocal("int[]");
+            case Type.Boolean() -> sayLocal("boolean");
+            case Type.ClassType(Id id) -> sayLocal(STR."\{id.toString()}");
             default -> throw new Todo();
         }
     }
@@ -152,18 +224,23 @@ public class PrettyPrinter {
         this.sayLocal(" ");
         ppAstId(m.methodId());
         this.sayLocal(STR."(");
-        m.formals().forEach(x -> {
-            ppDec(x);
-            sayLocal(", ");
-        });
-        this.sayLocal("){\n");
+        for (int i = 0; i < m.formals().size(); i++) {
+            ppDec(m.formals().get(i));
+            if (i < m.formals().size() - 1)
+                this.sayLocal(", ");
+        }
+//        m.formals().forEach(x -> {
+//            ppDec(x);
+//            sayLocal(", ");
+//        });
+        this.sayLocal(") {\n");
         indent();
         m.locals().forEach(x -> {
             this.say("");
             ppDec(x);
             this.sayLocal(";\n");
         });
-        this.sayln("");
+        if(!m.locals().isEmpty()) this.sayln("");
         m.stms().forEach(this::ppStm);
         this.say("return ");
         ppExp(m.retExp());
@@ -183,7 +260,12 @@ public class PrettyPrinter {
         }
         this.sayLocal("{\n");
         indent();
-        c.decs().forEach(this::ppDec);
+        c.decs().forEach(x -> {
+            this.say("");
+            ppDec(x);
+            this.sayLocal(";\n");
+        });
+        //c.decs().forEach(this::ppDec);
         c.methods().forEach(this::ppMethod);
         unIndent();
         this.sayln("}");

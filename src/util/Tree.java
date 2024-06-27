@@ -1,5 +1,7 @@
 package util;
 
+import ast.Ast;
+
 import java.util.List;
 import java.util.Vector;
 import java.util.function.BiFunction;
@@ -92,9 +94,12 @@ public class Tree<X> {
     public void dot(Function<X, String> converter) {
         Dot dot = new Dot(this.name);
         for (Node node : this.allNodes) {
-            for (Node child : node.children)
+            if(node == this.root) continue;
+            //System.out.println(Ast.Class.getClassId((Ast.Class.T) node.data).toString());
+            for (Node child : node.children) {
                 dot.insert(converter.apply(node.data),
                         converter.apply(child.data));
+            }
         }
         dot.visualize();
     }

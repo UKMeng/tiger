@@ -70,7 +70,8 @@ public class X64 {
                 "%rdx",
                 "%rcx",
                 "%r8",
-                "%r9").map(Id::newName).toList();
+                "%r9",
+                "%rsp").map(Id::newName).toList();
 
         // the return value register
         public static Id retReg = Id.newName("%rax");

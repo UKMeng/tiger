@@ -72,6 +72,8 @@ public class Control {
         public static boolean embedComment = false;
         public static String assemFile = null;
         public static boolean dump = false;
+        public static boolean classTableDump = false;
+        public static boolean methodTableDump = false;
     }
 
     // the allocator

@@ -7,6 +7,7 @@ import util.Todo;
 import util.Tuple;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -40,13 +41,16 @@ public class ClassTable {
             // the field in a class: its type and fresh id
             java.util.HashMap<Id, Tuple.Two<Type.T, Id>> fields,
             // the method in a class: its type and fresh id
-            java.util.HashMap<Id, Tuple.Two<MethodType, Id>> methods) {
+            java.util.HashMap<Id, Tuple.Two<MethodType, Id>> methods,
+            // the unused variables in a class
+            java.util.HashSet<String> unusedVarSet) {
 
         public void putField(Id fieldId, Type.T type, Id freshId) {
             if (this.fields.get(fieldId) != null) {
                 error(STR."duplicated class field: \{fieldId}");
             }
             this.fields.put(fieldId, new Tuple.Two<>(type, freshId));
+            this.unusedVarSet.add(freshId.toString());
         }
 
         public void putMethod(Id mid, MethodType methodType, Id freshId) {
@@ -83,7 +87,8 @@ public class ClassTable {
         Binding classBinding = new Binding(extends_,
                 self,
                 new HashMap<>(),
-                new HashMap<>());
+                new HashMap<>(),
+                new HashSet<>());
         this.classTable.put(classId, classBinding);
     }
 
@@ -124,6 +129,21 @@ public class ClassTable {
         return result;
     }
 
+    public void useField(Id classId, Id fieldId) {
+        Binding classBinding = this.classTable.get(classId);
+        classBinding.unusedVarSet.remove(fieldId.toString());
+    }
+
+    public void checkUnusedField() {
+        for (Id classId : this.classTable.keySet()) {
+            Binding classBinding = this.classTable.get(classId);
+            for (String id : classBinding.unusedVarSet) {
+                System.out.println(STR."Warning: Variable '\{id}' in class '\{classId}' is never used.");
+            }
+        }
+    }
+
+
     // get type of given method
     // return null for non-existing method
     public Tuple.Two<MethodType, Id> getMethod(Id classId, Id methodId) {
@@ -140,7 +160,14 @@ public class ClassTable {
 
     // lab 2, exercise 7:
     public void dump() {
-        throw new Todo();
+        System.out.println("Class Table:");
+        System.out.println("--------------------------");
+        for (Id classId : this.classTable.keySet()) {
+            System.out.println(STR."Class: \{classId}");
+            System.out.println();
+            System.out.println(this.classTable.get(classId));
+            System.out.println("--------------------------");
+        }
     }
 
     @Override

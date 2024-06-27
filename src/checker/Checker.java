@@ -26,14 +26,28 @@ public class Checker {
 
     private void error(String s) {
         System.out.println(STR."Error: type mismatch: \{s}");
-        System.exit(1);
+    }
+
+    private void error(String s, boolean recovery) {
+        System.out.println(STR."Error: type mismatch: \{s}");
+        if(!recovery) System.exit(1);
     }
 
     private void error(String s, Type.T expected, Type.T got) {
         System.out.println(STR."Error: type mismatch: \{s}");
+        System.out.print(STR."Expected: ");
         Type.output(expected);
+        System.out.print(STR."Got: ");
         Type.output(got);
-        System.exit(1);
+    }
+
+    private void error(String s, Type.T expected, Type.T got, boolean recovery) {
+        System.out.println(STR."Error: type mismatch: \{s}");
+        System.out.print(STR."Expected: ");
+        Type.output(expected);
+        System.out.print(STR."Got: ");
+        Type.output(got);
+        if(!recovery) System.exit(1);
     }
 
     // /////////////////////////////////////////////////////
@@ -48,12 +62,19 @@ public class Checker {
             resultId = this.classTable.getField(this.currentClass, aid.id);
         }
         if (resultId == null) {
-            error("id");
+            error(STR."id not found: \{aid.id}", false);
         }
         assert resultId != null;
         // set up the fresh
         aid.freshId = resultId.second();
         aid.isClassField = isClassField;
+
+        if (!isClassField) {
+            this.methodTable.useVar(resultId.second());
+        } else {
+            this.classTable.useField(this.currentClass, aid.id);
+        }
+
         return resultId.first();
     }
 
@@ -78,7 +99,7 @@ public class Checker {
                 }
                 var resultMethodId = this.classTable.getMethod(calleeClassId, methodId.id);
                 if (resultMethodId == null) {
-                    error(STR."method not found: \{calleeClassId} . \{methodId}");
+                    error(STR."method not found: \{calleeClassId} . \{methodId}", false);
                 }
                 var resultArgs = args.stream().map(this::checkExp).toList();
                 assert resultMethodId != null;
@@ -104,28 +125,88 @@ public class Checker {
                 var resultRight = checkExp(right);
 
                 switch (bop) {
-                    case "+", "-" -> {
-                        if (Type.nonEquals(resultLeft, Type.getInt()) ||
-                                Type.nonEquals(resultRight, Type.getInt())) {
-                            error(bop);
+                    case "+", "-", "*" -> {
+                        if (Type.nonEquals(resultLeft, Type.getInt())) {
+                            error("Bop Left Var Type", Type.getInt(), resultLeft);
+                        }
+                        if (Type.nonEquals(resultRight, Type.getInt())) {
+                            error("Bop Right Var Type", Type.getInt(), resultRight);
                         }
                         return Type.getInt();
                     }
                     case "<" -> {
-                        if (Type.nonEquals(resultLeft, Type.getInt()) ||
-                                Type.nonEquals(resultRight, Type.getInt())) {
-                            error("<");
+                        if (Type.nonEquals(resultLeft, Type.getInt())) {
+                            error("Bop Left Var Type", Type.getInt(), resultLeft);
+                        }
+                        if (Type.nonEquals(resultRight, Type.getInt())) {
+                            error("Bop Right Var Type", Type.getInt(), resultRight);
                         }
                         return Type.getBool();
                     }
                     default -> throw new Todo();
                 }
             }
+            case Exp.BopBool(
+                    Exp.T left,
+                    String bop,
+                    Exp.T right
+            ) -> {
+                var resultLeft = checkExp(left);
+                var resultRight = checkExp(right);
+                if (Type.nonEquals(resultLeft, Type.getBool())) {
+                    error("BopBool Left Var Type", Type.getBool(), resultLeft);
+                }
+                if (Type.nonEquals(resultRight, Type.getBool())) {
+                    error("BopBool Right Var Type", Type.getBool(), resultRight);
+                }
+                return Type.getBool();
+            }
             case Exp.ExpId(AstId aid) -> {
                 return checkAstId(aid);
             }
             case Exp.This() -> {
                 return Type.getClassType(this.currentClass);
+            }
+            case Exp.True(), Exp.False() -> {
+                return Type.getBool();
+            }
+            case Exp.Length(Exp.T array) -> {
+                var resultArray = checkExp(array);
+                if (Type.nonEquals(resultArray, Type.getIntArray())) {
+                    error("Length Var Type", Type.getIntArray(), resultArray);
+                }
+                return Type.getInt();
+            }
+            case Exp.NewIntArray(Exp.T exp) -> {
+                var resultExp = checkExp(exp);
+                if (Type.nonEquals(resultExp, Type.getInt())) {
+                    error("NewIntArray Var Type", Type.getInt(), resultExp);
+                }
+                return Type.getIntArray();
+            }
+            case Exp.Uop(
+                    String uop,
+                    Exp.T exp
+            ) -> {
+                var resultExp = checkExp(exp);
+                if (Type.nonEquals(resultExp, Type.getBool())) {
+                    error("Uop Var Type", Type.getBool(), resultExp);
+                }
+                return Type.getBool();
+            }
+            case Exp.ArraySelect(
+                    Exp.T array,
+                    Exp.T index
+            ) -> {
+                var resultArray = checkExp(array);
+                var resultIndex = checkExp(index);
+                if (Type.nonEquals(resultArray, Type.getIntArray())) {
+                    error("ArraySelect Array Type", Type.getIntArray(), resultArray);
+                }
+                if (Type.nonEquals(resultIndex, Type.getInt())) {
+                    error("ArraySelect Index Type", Type.getInt(), resultIndex);
+                }
+                return Type.getInt();
             }
             default -> throw new Todo();
         }
@@ -141,7 +222,7 @@ public class Checker {
             ) -> {
                 var resultCond = checkExp(cond);
                 if (Type.nonEquals(resultCond, Type.getBool())) {
-                    error("if require a boolean type");
+                    error("IF Condition Type", Type.getBool(), resultCond);
                 }
                 checkStm(then_);
                 checkStm(else_);
@@ -149,7 +230,7 @@ public class Checker {
             case Stm.Print(Exp.T exp) -> {
                 var resultExp = checkExp(exp);
                 if (Type.nonEquals(resultExp, Type.getInt())) {
-                    error("print requires an integer type");
+                    error("Print Var Type", Type.getInt(), resultExp);
                 }
             }
             case Stm.Assign(
@@ -160,7 +241,38 @@ public class Checker {
                 var resultAstId = checkAstId(id);
                 var resultExp = checkExp(exp);
                 if (Type.nonEquals(resultAstId, resultExp)) {
-                    error("=");
+                    error("Assign Var Type", resultAstId, resultExp);
+                }
+            }
+            case Stm.While(
+                    Exp.T cond,
+                    Stm.T body
+            ) -> {
+                var resultCond = checkExp(cond);
+                if (Type.nonEquals(resultCond, Type.getBool())) {
+                    error("While Condition Type", Type.getBool(), resultCond);
+                }
+                checkStm(body);
+            }
+            case Stm.Block(List<Stm.T> stms) -> {
+                stms.forEach(this::checkStm);
+            }
+            case Stm.AssignArray(
+                    AstId id,
+                    Exp.T index,
+                    Exp.T exp
+            ) -> {
+                var resultId = checkAstId(id);
+                var resultIndex = checkExp(index);
+                var resultExp = checkExp(exp);
+                if (Type.nonEquals(resultId, Type.getIntArray())) {
+                    error("AssignArray Id Type", Type.getIntArray(), resultId);
+                }
+                if (Type.nonEquals(resultIndex, Type.getInt())) {
+                    error("AssignArray Index Type", Type.getInt(), resultIndex);
+                }
+                if (Type.nonEquals(resultExp, Type.getInt())) {
+                    error("AssignArray Exp Type", Type.getInt(), resultExp);
                 }
             }
             default -> throw new Todo();
@@ -191,8 +303,9 @@ public class Checker {
         m.stms().forEach(this::checkStm);
         var resultExp = checkExp(m.retExp());
         if (Type.nonEquals(resultExp, m.retType())) {
-            error("ret type mismatch", m.retType(), resultExp);
+            error("Return Type", m.retType(), resultExp);
         }
+        this.methodTable.checkUnusedVar(m.methodId());
     }
 
     // class
@@ -282,6 +395,7 @@ public class Checker {
         Program.Singleton prog = (Program.Singleton) p;
         checkMainClass(prog.mainClass());
         prog.classes().forEach(this::checkClass);
+        this.classTable.checkUnusedField();
         return p;
     }
 
@@ -308,8 +422,6 @@ public class Checker {
                         p,
                         Control.Verbose.L1);
         p = buildTablePass.apply();
-
-
         // ////////////////////////////////////////////////
         // pass 2: check each class in turn, under the class table
         // built above.
