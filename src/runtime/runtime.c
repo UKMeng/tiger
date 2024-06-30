@@ -23,6 +23,29 @@ void Tiger_debug(char *s){
     printf("%s\n", s);
 }
 
+void *Tiger_newArray(long length, long init){
+    long *array = (long *)malloc((length + 1) * sizeof(long));
+    array[0] = length;
+    for(long i = 0; i < length; i++){
+        array[i + 1] = init;
+    }
+    return (void *)array;
+}
+
+void *Tiger_arrayLength(long *array){
+    long *length = (long *)array[0];
+    return length;
+}
+
+void *Tiger_arraySelect(long *array, long index){
+    long *length = (long *)array[0];
+    if(index < 0 || index >= *length){
+        printf("Array index out of bounds\n");
+        exit(1);
+    }
+    return (void *)array[index + 1];
+}
+
 
 int main(){
     Tiger_main();
