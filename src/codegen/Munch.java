@@ -149,7 +149,7 @@ public class Munch {
                          Id src,
                          int offset) {
         List<X64.VirtualReg.T> uses, defs;
-        uses = List.of(new X64.VirtualReg.Vid(src, new X64.Type.Int()));
+        uses = List.of(new X64.VirtualReg.Reg(src, new X64.Type.Int()));
         defs = List.of(new X64.VirtualReg.Vid(dest, new X64.Type.Int()));
         X64.Instr.T instr = new X64.Instr.Singleton(
                 Load,
@@ -165,7 +165,7 @@ public class Munch {
                           int offset) {
         List<X64.VirtualReg.T> uses, defs;
         uses = List.of(new X64.VirtualReg.Vid(src, new X64.Type.Int()));
-        defs = List.of(new X64.VirtualReg.Vid(dest, new X64.Type.Int()));
+        defs = List.of(new X64.VirtualReg.Reg(dest, new X64.Type.Int()));
         X64.Instr.T instr = new X64.Instr.Singleton(
                 Store,
                 (uarg, darg) ->
