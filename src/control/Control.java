@@ -83,7 +83,7 @@ public class Control {
             Stack,
         }
 
-        public static Kind strategy = Kind.Stack;
+        public static Kind strategy = Kind.Linear;
     }
 }
 
