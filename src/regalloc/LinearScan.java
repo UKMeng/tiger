@@ -239,8 +239,64 @@ public class LinearScan {
         }
     }
 
+    private void visit(X64.Block.T node, List<X64.Block.T> newBlocks, HashMap<Label, Boolean> permanentMark, HashMap<Label, Boolean> temporaryMark) {
+        if (permanentMark.containsKey(getLabel(node)) && permanentMark.get(getLabel(node))) return;
+        if (temporaryMark.containsKey(getLabel(node)) && temporaryMark.get(getLabel(node))) return;
+        temporaryMark.put(getLabel(node), true);
+        switch (node) {
+            case X64.Block.Singleton(Label label, List<X64.Instr.T> instrs, List<X64.Transfer.T> transfer) -> {
+                for (X64.Transfer.T t : transfer) {
+                    switch (t) {
+                        case X64.Transfer.Ret() -> {
+
+                        }
+                        case X64.Transfer.If(String instr, X64.Block.T trueBlock, X64.Block.T falseBlock) -> {
+                            visit(trueBlock, newBlocks, permanentMark, temporaryMark);
+                            visit(falseBlock, newBlocks, permanentMark, temporaryMark);
+                        }
+                        case X64.Transfer.Jmp(X64.Block.T target) -> {
+                            visit(target, newBlocks, permanentMark, temporaryMark);
+                        }
+                    }
+                }
+            }
+        }
+        temporaryMark.put(getLabel(node), false);
+        permanentMark.put(getLabel(node), true);
+        newBlocks.addFirst(node);
+    }
+
+    private X64.Function.T topologicalSort(X64.Function.T function) {
+        switch (function) {
+            case X64.Function.Singleton(X64.Type.T retType, Id classId, Id methodId, List<X64.Dec.T> formals, List<X64.Dec.T> locals, List<X64.Block.T> blocks) -> {
+                List<X64.Block.T> newBlocks = new ArrayList<>();
+                HashMap<Label, Boolean> permanentMark = new HashMap<>();
+                HashMap<Label, Boolean> temporaryMark = new HashMap<>();
+
+                boolean flag = true;
+                while (flag) {
+                    flag = false;
+                    for (X64.Block.T block : blocks) {
+                        Label label = getLabel(block);
+                        if (!permanentMark.containsKey(label)) {
+                            permanentMark.put(label, false);
+                        }
+                        if (!permanentMark.get(label)) {
+                            flag = true;
+                            visit(block, newBlocks, permanentMark, temporaryMark);
+                        }
+                    }
+                }
+
+                return new X64.Function.Singleton(retType, classId, methodId, formals, locals, newBlocks);
+            }
+        }
+    }
+
     private X64.Function.T allocFunction(X64.Function.T function) {
         TempMap tempMap = new TempMap();
+
+        function = topologicalSort(function);
 
         liveInOutMap.clear();
         livenessAnalysis(function);
