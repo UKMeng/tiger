@@ -178,11 +178,32 @@ public class LinearScan {
                     X64.Block.T block = blocks.get(i);
                     switch (block) {
                         case X64.Block.Singleton(Label label, List<X64.Instr.T> instrs, List<X64.Transfer.T> transfer) -> {
-                            Set<Id> usesSet = new Set<>();
-                            Set<Id> defsSet = new Set<>();
                             Set<Id> liveIn = new Set<>();
                             Set<Id> liveOut = new Set<>();
-                            for (X64.Instr.T instr : instrs) {
+                            Set<Id> blockLiveOut = new Set<>();
+                            for (X64.Transfer.T t : transfer) {
+                                switch (t) {
+                                    case X64.Transfer.Ret() -> {
+
+                                    }
+                                    case X64.Transfer.If(String instr, X64.Block.T trueBlock, X64.Block.T falseBlock) -> {
+                                        Set<Id> temp1 = liveInOutMap.get(getLabel(trueBlock)).first();
+                                        Set<Id> temp2 = liveInOutMap.get(getLabel(falseBlock)).first();
+                                        liveOut.union(temp1);
+                                        liveOut.union(temp2);
+                                    }
+                                    case X64.Transfer.Jmp(X64.Block.T target) -> {
+                                        Set<Id> temp = liveInOutMap.get(getLabel(target)).first();
+                                        liveOut.union(temp);
+                                    }
+                                }
+                            }
+                            blockLiveOut = liveOut.clone();
+                            for (int j = instrs.size() - 1; j >= 0; j--) {
+                                Set<Id> usesSet = new Set<>();
+                                Set<Id> defsSet = new Set<>();
+                                X64.Instr.T instr = instrs.get(j);
+                                if (i != instrs.size() - 1) liveOut = liveIn.clone();
                                 switch (instr) {
                                     case X64.Instr.Singleton(X64.Instr.Kind kind,
                                                              BiFunction<List<X64.VirtualReg.T>, List<X64.VirtualReg.T>, String> ppFormat,
@@ -208,32 +229,16 @@ public class LinearScan {
                                                 }
                                             }
                                         }
+                                        liveIn = usesSet.clone();
+                                        Set<Id> temp = liveOut.clone();
+                                        temp.sub(defsSet);
+                                        liveIn.union(temp);
                                     }
                                 }
                             }
-                            for (X64.Transfer.T t : transfer) {
-                                switch (t) {
-                                    case X64.Transfer.Ret() -> {
 
-                                    }
-                                    case X64.Transfer.If(String instr, X64.Block.T trueBlock, X64.Block.T falseBlock) -> {
-                                        Set<Id> temp1 = liveInOutMap.get(getLabel(trueBlock)).first();
-                                        Set<Id> temp2 = liveInOutMap.get(getLabel(falseBlock)).first();
-                                        liveOut.union(temp1);
-                                        liveOut.union(temp2);
-                                    }
-                                    case X64.Transfer.Jmp(X64.Block.T target) -> {
-                                        Set<Id> temp = liveInOutMap.get(getLabel(target)).first();
-                                        liveOut.union(temp);
-                                    }
-                                }
-                            }
-                            Set<Id> tempSet = liveOut.clone();
-                            tempSet.sub(defsSet);
-                            usesSet.union(tempSet);
-                            liveIn = usesSet;
                             if (i == 0) liveIn = new Set<>();
-                            liveInOutMap.put(label, new Tuple.Two<>(liveIn, liveOut));
+                            liveInOutMap.put(label, new Tuple.Two<>(liveIn, blockLiveOut));
                         }
                     }
 
@@ -300,21 +305,21 @@ public class LinearScan {
         switch (function) {
             case X64.Function.Singleton(X64.Type.T retType, Id classId, Id methodId, List<X64.Dec.T> formals, List<X64.Dec.T> locals, List<X64.Block.T> blocks) -> {
                 // debug: print liveInOutMap
-//                for (X64.Block.T block : blocks) {
-//                    Label label = getLabel(block);
-//                    System.out.println(STR."\{label.toString()}");
-//                    Set<Id> liveIn = liveInOutMap.get(label).first();
-//                    Set<Id> liveOut = liveInOutMap.get(label).second();
-//                    System.out.println("Live In");
-//                    for (Id id: liveIn.getSet()) {
-//                        System.out.println(STR."\{id.toString()}");
-//                    }
-//                    System.out.println("Live Out");
-//                    for (Id id: liveOut.getSet()) {
-//                        System.out.println(STR."\{id.toString()}");
-//                    }
-//                    System.out.println();
-//                }
+                for (X64.Block.T block : blocks) {
+                    Label label = getLabel(block);
+                    System.out.println(STR."\{label.toString()}");
+                    Set<Id> liveIn = liveInOutMap.get(label).first();
+                    Set<Id> liveOut = liveInOutMap.get(label).second();
+                    System.out.println("Live In");
+                    for (Id id: liveIn.getSet()) {
+                        System.out.println(STR."\{id.toString()}");
+                    }
+                    System.out.println("Live Out");
+                    for (Id id: liveOut.getSet()) {
+                        System.out.println(STR."\{id.toString()}");
+                    }
+                    System.out.println();
+                }
                 for (X64.Block.T block : blocks) {
                     Label label = getLabel(block);
                     Set<Id> liveIn = liveInOutMap.get(label).first();
