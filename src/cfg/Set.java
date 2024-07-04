@@ -18,6 +18,8 @@ public class Set<X> {
         this.set.addAll(theSet.set);
     }
 
+    public void intersection(Set<X> theSet) { this.set.retainAll(theSet.set); }
+
     public void sub(Set<X> theSet) {
         this.set.removeAll(theSet.set);
     }

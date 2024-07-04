@@ -16,9 +16,11 @@ import static codegen.X64.Block.getLabel;
 public class LinearScan {
 
     private HashMap<Label, Tuple.Two<Set<Id>, Set<Id>>> liveInOutMap;
+    private HashMap<Label, Tuple.Two<Set<Id>, Set<Id>>> liveInterval;
 
     public LinearScan() {
         liveInOutMap = new HashMap<>();
+        liveInterval = new HashMap<>();
     }
 
     private X64.Block.T allocBlock(X64.Block.T block, TempMap tempMap, boolean firstBlock, Frame frame) {
@@ -189,7 +191,7 @@ public class LinearScan {
                                         for (X64.VirtualReg.T use: uses) {
                                             switch (use) {
                                                 case X64.VirtualReg.Reg(Id r, X64.Type.T ty) -> {
-                                                    usesSet.add(r);
+//                                                    usesSet.add(r);
                                                 }
                                                 case X64.VirtualReg.Vid(Id id, X64.Type.T ty) -> {
                                                     usesSet.add(id);
@@ -199,7 +201,7 @@ public class LinearScan {
                                         for (X64.VirtualReg.T def: defs) {
                                             switch(def) {
                                                 case X64.VirtualReg.Reg(Id r, X64.Type.T ty) -> {
-                                                    defsSet.add(r);
+//                                                    defsSet.add(r);
                                                 }
                                                 case X64.VirtualReg.Vid(Id id, X64.Type.T ty) -> {
                                                     defsSet.add(id);
@@ -215,21 +217,22 @@ public class LinearScan {
 
                                     }
                                     case X64.Transfer.If(String instr, X64.Block.T trueBlock, X64.Block.T falseBlock) -> {
-                                        Set<Id> temp1 = liveInOutMap.get(getLabel(trueBlock)).second();
-                                        Set<Id> temp2 = liveInOutMap.get(getLabel(falseBlock)).second();
+                                        Set<Id> temp1 = liveInOutMap.get(getLabel(trueBlock)).first();
+                                        Set<Id> temp2 = liveInOutMap.get(getLabel(falseBlock)).first();
                                         liveOut.union(temp1);
                                         liveOut.union(temp2);
                                     }
                                     case X64.Transfer.Jmp(X64.Block.T target) -> {
-                                        Set<Id> temp = liveInOutMap.get(getLabel(target)).second();
+                                        Set<Id> temp = liveInOutMap.get(getLabel(target)).first();
                                         liveOut.union(temp);
                                     }
                                 }
                             }
-                            Set<Id> tempSet = liveOut;
+                            Set<Id> tempSet = liveOut.clone();
                             tempSet.sub(defsSet);
                             usesSet.union(tempSet);
                             liveIn = usesSet;
+                            if (i == 0) liveIn = new Set<>();
                             liveInOutMap.put(label, new Tuple.Two<>(liveIn, liveOut));
                         }
                     }
@@ -293,6 +296,41 @@ public class LinearScan {
         }
     }
 
+    private void getLiveInterval(X64.Function.T function) {
+        switch (function) {
+            case X64.Function.Singleton(X64.Type.T retType, Id classId, Id methodId, List<X64.Dec.T> formals, List<X64.Dec.T> locals, List<X64.Block.T> blocks) -> {
+                // debug: print liveInOutMap
+//                for (X64.Block.T block : blocks) {
+//                    Label label = getLabel(block);
+//                    System.out.println(STR."\{label.toString()}");
+//                    Set<Id> liveIn = liveInOutMap.get(label).first();
+//                    Set<Id> liveOut = liveInOutMap.get(label).second();
+//                    System.out.println("Live In");
+//                    for (Id id: liveIn.getSet()) {
+//                        System.out.println(STR."\{id.toString()}");
+//                    }
+//                    System.out.println("Live Out");
+//                    for (Id id: liveOut.getSet()) {
+//                        System.out.println(STR."\{id.toString()}");
+//                    }
+//                    System.out.println();
+//                }
+                for (X64.Block.T block : blocks) {
+                    Label label = getLabel(block);
+                    Set<Id> liveIn = liveInOutMap.get(label).first();
+                    Set<Id> liveOut = liveInOutMap.get(label).second();
+                    Set<Id> temp = liveIn.clone();
+                    temp.intersection(liveOut);
+                    Set<Id> start = liveOut.clone();
+                    Set<Id> end = liveIn.clone();
+                    start.sub(temp);
+                    end.sub(temp);
+                    liveInterval.put(label, new Tuple.Two<>(start, end));
+                }
+            }
+        }
+    }
+
     private X64.Function.T allocFunction(X64.Function.T function) {
         TempMap tempMap = new TempMap();
 
@@ -300,6 +338,9 @@ public class LinearScan {
 
         liveInOutMap.clear();
         livenessAnalysis(function);
+
+        liveInterval.clear();
+        getLiveInterval(function);
 
         int offset = 0;
         switch (function) {
