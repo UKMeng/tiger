@@ -41,6 +41,11 @@ public class Set<X> {
         return true;
     }
 
+    public boolean isInSet(X data) {
+        return this.set.contains(data);
+    }
+
+
     public HashSet<X> getSet() {
         return this.set;
     }
